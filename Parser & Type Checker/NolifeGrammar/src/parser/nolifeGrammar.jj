@@ -1,0 +1,850 @@
+/**
+ * JavaCC file
+ */
+ 
+options {
+  JDK_VERSION = "1.8";
+}
+
+PARSER_BEGIN(NolifeParser)
+package parser;
+import ast.*;
+import visitor.*;
+
+public class NolifeParser {
+
+  private static ASTNodeFactory factory;
+	
+	public static void main(String args[]) { 
+	    NolifeParser parser;
+	    java.io.InputStream input;
+
+	    /*if (args.length < 1) {
+	      	System.out.println("Usage: java -jar nlc.jar <input file>");
+	      	return;
+	    }*/
+	    
+	    //String filename = new String(args[args.length - 1]);
+	    String filename = "yeet.txt";
+	    try {
+	      	input = new java.io.FileInputStream(filename);
+	    } catch (java.io.FileNotFoundException e) {
+	        System.out.println("File not found.");
+	        return;
+	    }
+  
+	    try {
+	      factory = new ASTNodeFactory();
+	      parser = new NolifeParser(input);
+	      ASTNode node = parser.program();
+	      //SourceVisitor v = new SourceVisitor();
+	      ASTBuildVisitor v = new ASTBuildVisitor();
+	      node.accept(v);
+	      TypeChecker u = new TypeChecker();
+	      //System.out.println("---------- Type checking...");
+	      node.accept(u);
+	      //System.out.println("---------- Done ----------");
+	      //System.out.println("Program is:\n\n"+v.getSrc());
+	    } catch (ParseException e) {
+	      System.err.println("Syntax Error: "+e.getMessage());
+	    }
+	}
+	
+}
+
+PARSER_END(NolifeParser)
+
+SKIP :
+{
+ 	" "
+|	"\r"
+|	"\t"
+|	"\n"
+|   <"{"(~["}"])*"}">
+} 
+
+TOKEN : /* keywords */
+{
+    < O_MOD: "MOD">
+    | <O_AND: "AND">
+    | <O_ARRAY: "ARRAY">
+    | <O_BEGIN: "BEGIN">
+    | <O_CHARACTER: "CHARACTER">
+    | <O_DO: "DO">
+    | <O_ELSE: "ELSE">
+    | <O_END: "END">
+    | <O_FLOAT: "FLOAT">
+    | <O_FUNCTION: "FUNCTION">
+    | <O_IF: "IF">
+    | <O_INTEGER: "INTEGER">
+    | <O_NOT: "NOT">
+    | <O_OF: "OF">
+    | <O_OR: "OR">
+    | <O_PROCEDURE: "PROCEDURE">
+    | <O_PROGRAM: "PROGRAM">
+    | <O_READ: "READ">
+    | <O_RETURN: "RETURN">
+    | <O_THEN: "THEN">
+    | <O_VAR: "VAR">
+    | <O_WHILE: "WHILE">
+    | <O_WRITE: "WRITE">
+    | <O_CASE: "CASE">
+}
+
+TOKEN : /* other lexical tokens */
+{
+  <O_LE: "<=">
+| <O_LT: "<">
+| <O_GE: ">=">
+| <O_GT: ">">
+| <O_EQ: "=">
+| <O_NE: "<>">
+| <O_ASSIGN: ":=">
+| <O_COLON: ":">
+| <O_SEMICOLON: ";">
+| <O_COMMA: ",">
+| <O_LBRACKET: "[">
+| <O_RBRACKET: "]">
+| <O_LPAREN: "(">
+| <O_RPAREN: ")">
+| < O_DOT: "." >
+| <O_PLUS: "+">
+| <O_MINUS: "-">
+| <O_TIMES: "*">
+| <O_CHAR: "'"~["'"]"'">
+| <O_STRING: "'"~["'"](~["'"])+"'">
+| <#DIGIT: ["0" - "9"] >
+| <#ALPHA: ["a" - "z"] | ["A" - "Z"] >
+| <O_IDENTIFIER: <ALPHA> (<ALPHA> | <DIGIT>)*>
+| <#EXPONENT: ("e" | "E") ("+" | "-")? (<DIGIT>)+ >
+| <O_FLOATCON: <O_INT> (< O_DOT > (<DIGIT>)+ (<EXPONENT>)? | <EXPONENT>) >
+| <O_INT: "0" | ["1" - "9"](<DIGIT>)* >
+}
+
+ASTNode program(): 
+{
+	ASTNode programNode = factory.makeASTNode("ProgramNode");
+	ASTNode declNode = null;
+	ASTNode stmtListNode = null;
+	ASTNode spdNode = null;
+	Token id = null;
+}
+{
+   	<O_PROGRAM> id = <O_IDENTIFIER> <O_SEMICOLON>
+   	( declNode = decls() )?
+   	( spdNode = subprogram_decls() )? 
+   	stmtListNode = compound_stmt() 
+   	
+ 	{
+ 	  	if (declNode != null)
+ 	  		programNode.addChild(declNode);
+ 	  	if (spdNode != null)
+ 	  		programNode.addChild(spdNode);
+ 	  	programNode.addChild(stmtListNode);
+ 	  	programNode.addLabel(id.image);
+ 		return programNode;
+ 	}
+}    
+ASTNode decls(): 
+{
+  	ASTNode declNode = null;
+}
+{
+	<O_VAR> declNode = decl_list()
+	{ return declNode; }
+}
+
+ASTNode decl_list() : 
+{
+  	ASTNode declNode = factory.makeASTNode("DeclNode");
+  	ASTNode varDeclsNode = null;
+  	ASTNode typeNode = null;
+  	ASTNode tempTypeNode = null;
+  	ASTNode tempArrayNode = null;
+}
+{
+  	( varDeclsNode = identifier_list() <O_COLON> typeNode = type() <O_SEMICOLON> {
+
+		//Might change?
+		String type = typeNode.getClass().getSimpleName();
+
+		if (!type.equals("ArrayDeclNode")) { 
+			for (ASTNode varNode : varDeclsNode.getChildren()) {
+				tempTypeNode = factory.makeASTNode(type);
+				tempTypeNode.addChild(varNode);
+				declNode.addChild(tempTypeNode);
+			}
+		}
+		else {
+		  	type = typeNode.getChild(2).getClass().getSimpleName();
+			for (ASTNode varNode : varDeclsNode.getChildren()) {
+				tempTypeNode = factory.makeASTNode(type);
+				tempArrayNode = factory.makeASTNode("ArrayDeclNode");
+				tempArrayNode.addLabel(varNode.getLabel());
+				tempArrayNode.addChild(typeNode.getChild(0));
+				tempArrayNode.addChild(typeNode.getChild(1));
+				tempTypeNode.addChild(tempArrayNode);
+				declNode.addChild(tempTypeNode);
+			}
+		}
+	}
+   	)+
+
+   	{ return declNode; }
+}
+
+ASTNode identifier_list() : 
+{
+  	Token id = null;
+  	ASTNode varDeclsNode = factory.makeASTNode("VarDeclsNode");
+  	ASTNode varNode = null;
+}
+{
+	id = <O_IDENTIFIER> {
+		varNode = factory.makeASTNode("IdDeclNode").addLabel(id.image);
+		varDeclsNode.addChild(varNode);
+	}
+  	( <O_COMMA> id = <O_IDENTIFIER> {
+		varNode = factory.makeASTNode("IdDeclNode").addLabel(id.image);
+		varDeclsNode.addChild(varNode);
+  	}
+  	)*
+
+  	{ return varDeclsNode; }
+}
+
+ASTNode type() : 
+{
+  	ASTNode typeNode = null;
+}
+{
+  	( typeNode = standard_type() 
+  	| typeNode = array_type()
+  	)
+
+  	{ return typeNode; }
+}
+
+ASTNode standard_type() : 
+{
+  	Token id = null;
+	ASTNode typeNode = null;
+}
+{
+	( id = <O_INTEGER> {
+	  	typeNode = factory.makeASTNode("IntTypeNode");
+	}
+	| id = <O_FLOAT> {
+		typeNode = factory.makeASTNode("FloatTypeNode");
+	}
+	| id = <O_CHARACTER> {
+		typeNode = factory.makeASTNode("CharTypeNode");
+	}
+	)
+
+	{ return typeNode; }
+}
+
+ASTNode array_type() : 
+{
+  	ASTNode arrayDeclNode = factory.makeASTNode("ArrayDeclNode");
+  	ASTNode[] dimNode = null;
+  	ASTNode typeNode = null; 
+}
+{
+    <O_ARRAY> <O_LBRACKET> dimNode = dim() <O_RBRACKET> <O_OF> typeNode = standard_type()
+
+    {
+	 	arrayDeclNode.addChild(dimNode[0]);
+	 	arrayDeclNode.addChild(dimNode[1]);
+	 	arrayDeclNode.addChild(typeNode);
+      	return arrayDeclNode; }
+}
+
+ASTNode[] dim() :
+{
+  	ASTNode[] typeNodes = { null, null };
+ 	Token id1 = null, id2 = null;
+}
+{
+	( id1 = <O_INT> <O_DOT> <O_DOT > id2 = <O_INT> 
+	| id1 = <O_CHAR> <O_DOT> <O_DOT > id2 = <O_CHAR> )
+
+	{
+	  	typeNodes[0] = factory.makeASTNode("SymNode");
+		typeNodes[0].addLabel(id1.image);
+		typeNodes[1] = factory.makeASTNode("SymNode");
+		typeNodes[1].addLabel(id2.image);
+
+		return typeNodes;
+	}
+}
+
+ASTNode subprogram_decls() : 
+{
+  	ASTNode spdNode = factory.makeASTNode("SubProgDeclNode");
+  	ASTNode childOfSPDNode = null;
+}
+{
+	( childOfSPDNode = subprogram_decl() <O_SEMICOLON> { spdNode.addChild(childOfSPDNode); })+
+
+	{ return spdNode; }
+}
+
+ASTNode subprogram_decl() : 
+{
+  	ASTNode funcNode = null;
+  	ASTNode declNode = null;
+  	ASTNode stmtListNode = null;
+}
+{
+  	funcNode = subprogram_head() (declNode = decls())? stmtListNode = compound_stmt() {
+
+		//If function...
+		String type = funcNode.getClass().getSimpleName();
+		if (!type.equals("ProcNode")) {
+			funcNode.getChild(0).addChild(declNode);
+			funcNode.getChild(0).addChild(stmtListNode);
+		}
+		else {
+		  	funcNode.addChild(declNode);
+		 	funcNode.addChild(stmtListNode);
+		}
+		
+		return funcNode;
+ 	}
+}
+
+ASTNode subprogram_head() : 
+{
+	ASTNode funcNode = null;
+	ASTNode paramNode = null;
+	ASTNode returnTypeNode = null;
+	Token id = null;
+}
+{
+	( <O_FUNCTION> id = <O_IDENTIFIER> (paramNode = arguments())? <O_COLON> returnTypeNode = standard_type() <O_SEMICOLON> {
+	  	funcNode = factory.makeASTNode("FuncNode");
+		funcNode.addLabel(id.image);
+		funcNode.addChild(paramNode);
+		returnTypeNode.addChild(funcNode);
+
+		return returnTypeNode;
+	}
+	| <O_PROCEDURE> id = <O_IDENTIFIER> (paramNode = arguments())? <O_SEMICOLON> ) {
+	  	funcNode = factory.makeASTNode("ProcNode");
+		funcNode.addLabel(id.image);
+		funcNode.addChild(paramNode);
+		
+		return funcNode;
+	}
+
+}
+
+ASTNode arguments() : 
+{
+	ASTNode paramNode = null;
+}
+{
+  <O_LPAREN> paramNode = parameter_list() <O_RPAREN>
+
+  { return paramNode; }
+}
+
+ASTNode parameter_list() : 
+{
+	ASTNode paramNode = factory.makeASTNode("ParamNode");
+	ASTNode typeNode = null;
+  	ASTNode varDeclsNode = null;
+  	ASTNode tempTypeNode = null;
+  	ASTNode tempArrayNode = null;
+}
+{
+	varDeclsNode = identifier_list() <O_COLON> typeNode = type() {
+	  	//Might change? Maybe give the list of variables to 'type()'...
+		String type = typeNode.getClass().getSimpleName();
+		
+		if (!type.equals("ArrayDeclNode")) { 
+			for (ASTNode varNode : varDeclsNode.getChildren()) {
+				tempTypeNode = factory.makeASTNode(type);
+				tempTypeNode.addChild(varNode);
+				paramNode.addChild(tempTypeNode);
+			}
+		}
+		else {
+		  	type = typeNode.getChild(2).getClass().getSimpleName();
+			for (ASTNode varNode : varDeclsNode.getChildren()) {
+				tempTypeNode = factory.makeASTNode(type);
+				tempArrayNode = factory.makeASTNode("ArrayDeclNode");
+				tempArrayNode.addLabel(varNode.getLabel());
+				tempArrayNode.addChild(typeNode.getChild(0));
+				tempArrayNode.addChild(typeNode.getChild(1));
+				tempTypeNode.addChild(tempArrayNode);
+				paramNode.addChild(tempTypeNode);
+			}
+		}
+	}
+    ( <O_SEMICOLON> varDeclsNode = identifier_list() <O_COLON> typeNode = type() {
+		//Might change? Maybe give the list of variables to 'type()'...
+		type = typeNode.getClass().getSimpleName();
+		if (!type.equals("ArrayDeclNode")) { 
+			for (ASTNode varNode : varDeclsNode.getChildren()) {
+				tempTypeNode = factory.makeASTNode(type);
+				tempTypeNode.addChild(varNode);
+				paramNode.addChild(tempTypeNode);
+			}
+		}
+		else {
+		  	type = typeNode.getChild(2).getClass().getSimpleName();
+			for (ASTNode varNode : varDeclsNode.getChildren()) {
+				tempTypeNode = factory.makeASTNode(type);
+				tempArrayNode = factory.makeASTNode("ArrayDeclNode");
+				tempArrayNode.addChild(varNode);
+				tempArrayNode.addChild(typeNode.getChild(0));
+				tempArrayNode.addChild(typeNode.getChild(1));
+				tempTypeNode.addChild(tempArrayNode);
+				paramNode.addChild(tempTypeNode);
+			}
+		}
+    }
+    )*
+
+    { return paramNode; }
+}
+
+ASTNode compound_stmt() : 
+{
+	ASTNode stmtsNode = null;
+}
+{
+	<O_BEGIN> stmtsNode = stmt_list() <O_END>
+
+	{ return stmtsNode; }
+}
+
+ASTNode stmt_list() : 
+{
+	ASTNode stmtListNode = factory.makeASTNode("StmtListNode");
+	ASTNode stmtNode = null;
+}
+{
+	stmtNode = stmt() { stmtListNode.addChild(stmtNode); }
+	( <O_SEMICOLON> stmtNode = stmt() {stmtListNode.addChild(stmtNode); })*
+
+	{ return stmtListNode; }
+}
+
+ASTNode stmt() :
+{
+	ASTNode stmtNode = null;
+}
+
+{
+	( LOOKAHEAD(2)
+		 stmtNode = assignment()
+  		| stmtNode = if_stmt()
+  		| stmtNode = while_stmt()
+  		| stmtNode = procedure_invocation()
+  		| stmtNode = i_o_stmt()
+  		| stmtNode = compound_stmt()
+  		| stmtNode = return_stmt()
+  		| stmtNode = case_stmt()
+	)
+
+	{ return stmtNode; }
+}
+
+ASTNode assignment() :
+{
+  ASTNode idDefNode = null;
+  ASTNode opNode = null;
+  ASTNode assignNode = factory.makeASTNode("AssignNode");
+}
+{
+	idDefNode = variable() <O_ASSIGN> opNode = expr() {
+
+		assignNode.addChild(idDefNode);
+		assignNode.addChild(opNode);
+
+		return assignNode;
+	}
+}
+
+ASTNode if_stmt() :
+{
+  	ASTNode ifStmtNode = factory.makeASTNode("IfStmtNode");
+  	ASTNode ifNode = null;
+  	ASTNode thenNode = null;
+  	ASTNode elseNode = null;
+}
+{
+	<O_IF> ifNode = expr() <O_THEN> thenNode = stmt() 
+	[LOOKAHEAD(<O_ELSE>) <O_ELSE> elseNode = stmt()]
+
+	{
+		ifStmtNode.addChild(ifNode);
+		ifStmtNode.addChild(thenNode);
+		ifStmtNode.addChild(elseNode);
+		return ifStmtNode;
+	}
+}
+
+ASTNode while_stmt() :
+{
+  	ASTNode whileNode = factory.makeASTNode("WhileNode");
+  	ASTNode loopNode = null;
+  	ASTNode doNode = null;
+}
+{
+	<O_WHILE> loopNode = expr() <O_DO> doNode = stmt() {
+		whileNode.addChild(loopNode);
+		whileNode.addChild(doNode);
+		return whileNode;
+	}
+}
+
+ASTNode procedure_invocation() :
+{
+	ASTNode procCallNode = factory.makeASTNode("ProcCallNode");
+	ASTNode exprListNode = null;
+	Token id = null;
+}
+{
+	id = <O_IDENTIFIER> <O_LPAREN> (exprListNode = expr_list())? <O_RPAREN> {
+		procCallNode.addChild(exprListNode);
+		procCallNode.addLabel(id.image);
+		return procCallNode;
+	}
+} 
+
+ASTNode i_o_stmt() :
+{
+  	ASTNode readOrWriteNode = null;
+  	ASTNode	givenNode = null;
+}
+{
+	( <O_READ> <O_LPAREN> givenNode = variable() <O_RPAREN> {
+	 	readOrWriteNode = factory.makeASTNode("ReadNode");
+	}
+	| <O_WRITE> <O_LPAREN> ( givenNode = expr() | givenNode = string()) <O_RPAREN> {
+		readOrWriteNode = factory.makeASTNode("WriteNode");
+	}
+	) 
+	{
+	  	readOrWriteNode.addChild(givenNode);
+	  	return readOrWriteNode;
+	}
+}
+
+ASTNode return_stmt() :
+{
+	ASTNode returnNode = factory.makeASTNode("ReturnNode");
+	ASTNode exprNode = null;
+}
+{
+	<O_RETURN> exprNode = expr() {
+
+	 	returnNode.addChild(exprNode);
+	 	return returnNode; 
+	 }
+}
+
+ASTNode case_stmt() :
+{
+	ASTNode castStmtNode = factory.makeASTNode("CaseStmtNode");
+	ASTNode exprNode = null;
+	ASTNode caseListNode = null;
+}
+{
+	<O_CASE> exprNode = expr() <O_OF> (caseListNode = cases())? <O_END> {
+
+		castStmtNode.addChild(exprNode);
+		castStmtNode.addChild(caseListNode);
+		return castStmtNode;
+	}
+} 
+
+ASTNode cases() :
+{
+	ASTNode caseListNode = factory.makeASTNode("CaseListNode");
+	ASTNode caseNode = null;
+}
+{
+	caseNode = case_element() { caseListNode.addChild(caseNode); }
+	( <O_SEMICOLON> caseNode = case_element() { caseListNode.addChild(caseNode); })*
+
+	{ return caseListNode; }
+}
+
+ASTNode case_element() :
+{
+	ASTNode caseNode = factory.makeASTNode("CaseNode");
+	ASTNode caseLabelsNode = null;
+	ASTNode stmtNode = null;
+}
+{
+  	caseLabelsNode = case_labels() <O_COLON> stmtNode = stmt() {
+		
+		caseNode.addChild(caseLabelsNode);
+		caseNode.addChild(stmtNode);
+		return caseNode;
+  }
+}
+
+ASTNode case_labels() :
+{
+	ASTNode caseLabelsNode = factory.makeASTNode("CaseLabelsNode");
+	ASTNode symNode = null;
+	Token id = null;
+}
+{
+	( id = < O_INT > | id = < O_FLOATCON >) {
+		symNode = factory.makeASTNode("SymNode").addLabel(id.image);
+		caseLabelsNode.addChild(symNode);
+	}
+	( <O_COMMA> ( id = <O_INT> | id = < O_FLOATCON > ) {
+		symNode = factory.makeASTNode("SymNode").addLabel(id.image);
+		caseLabelsNode.addChild(symNode);
+	}
+	)*
+
+	{ return caseLabelsNode; }
+}
+
+ASTNode expr_list() : 
+{
+	ASTNode exprListNode = factory.makeASTNode("ExprListNode");
+	ASTNode opNode = null;
+}
+{
+	opNode = expr() { exprListNode.addChild(opNode); } ( <O_COMMA> opNode = expr() { exprListNode.addChild(opNode); })* {
+		return exprListNode;
+	}
+}
+
+ASTNode expr() :
+{
+  	ASTNode opNode = null;
+  	ASTNode termNode = null;
+}
+{
+	termNode = term1() opNode = exprPrime(termNode)
+	{ return opNode; }
+}
+
+ASTNode exprPrime(ASTNode termNode) : 
+{
+  	ASTNode opNode = termNode;
+	ASTNode childOneNode = null;
+	ASTNode childTwoNode = null;
+}
+{
+	( <O_OR> childOneNode = term1() childTwoNode = exprPrime(childOneNode) {
+		opNode = factory.makeASTNode("OrNode");
+		opNode.addChild(termNode);
+		opNode.addChild(childTwoNode);
+	}
+  	| <O_AND> childOneNode = term1() childTwoNode = exprPrime(childOneNode) {
+		opNode = factory.makeASTNode("AndNode");
+		opNode.addChild(termNode);
+		opNode.addChild(childTwoNode);
+	}
+  	|
+  	{}
+  	)
+
+  	{ return opNode; }
+}
+
+ASTNode term1() :
+{
+  	ASTNode opNode = null;
+	ASTNode termNode = null;
+}
+{
+	termNode = term2() opNode = term1Prime(termNode)
+	{ return opNode; }
+}
+
+
+ASTNode term1Prime(ASTNode termNode) :
+{
+  	ASTNode opNode = termNode;
+	ASTNode childOneNode = null;
+	ASTNode childTwoNode = null;
+}
+{
+	( <O_LT> childOneNode = term2() childTwoNode = term1Prime(childOneNode) {
+		opNode = factory.makeASTNode("LessThanNode");
+		opNode.addChild(termNode);
+		opNode.addChild(childTwoNode);
+	}
+	| <O_LE> childOneNode = term2() childTwoNode = term1Prime(childOneNode) {
+		opNode = factory.makeASTNode("LessEqualNode");
+		opNode.addChild(termNode);
+		opNode.addChild(childTwoNode);
+	}
+	| <O_GT> childOneNode = term2() childTwoNode = term1Prime(childOneNode) {
+		opNode = factory.makeASTNode("GreaterThanNode");
+		opNode.addChild(termNode);
+		opNode.addChild(childTwoNode);
+	}
+	| <O_GE> childOneNode = term2() childTwoNode = term1Prime(childOneNode) {
+		opNode = factory.makeASTNode("GreaterEqualNode");
+		opNode.addChild(termNode);
+		opNode.addChild(childTwoNode);
+	}
+	| <O_NE> childOneNode = term2() childTwoNode = term1Prime(childOneNode) {
+		opNode = factory.makeASTNode("NotEqualNode");
+		opNode.addChild(termNode);
+		opNode.addChild(childTwoNode);
+	}
+	| <O_EQ> childOneNode = term2() childTwoNode = term1Prime(childOneNode) {
+		opNode = factory.makeASTNode("EqualNode");
+		opNode.addChild(termNode);
+		opNode.addChild(childTwoNode);
+	}
+	|
+	{}
+	)
+
+	{ return opNode; }
+}
+
+ASTNode term2() :
+{
+  	ASTNode opNode = null;
+	ASTNode termNode = null;
+}
+{
+	termNode = term3() opNode = term2Prime(termNode)
+	{ return opNode; }
+}
+
+
+ASTNode term2Prime(ASTNode termNode) :
+{
+  	ASTNode opNode = termNode;
+	ASTNode childOneNode = null;
+	ASTNode childTwoNode = null;
+}
+{
+	( <O_PLUS> childOneNode = term3() childTwoNode = term2Prime(childOneNode) {
+		opNode = factory.makeASTNode("AddNode");
+		opNode.addChild(termNode);
+		opNode.addChild(childTwoNode);
+	}
+	| <O_MINUS> childOneNode = term3() childTwoNode = term2Prime(childOneNode) {
+		opNode = factory.makeASTNode("SubNode");
+		opNode.addChild(termNode);
+		opNode.addChild(childTwoNode);
+	}
+	|
+	{ }
+	)
+
+	{ return opNode; }
+}
+
+
+ASTNode term3() :
+{
+  	ASTNode opNode = null;
+	ASTNode factorNode = null;
+}
+{
+	factorNode = factor() opNode = term3Prime(factorNode)
+	
+	{ return opNode; }
+}  
+
+ASTNode term3Prime(ASTNode factorNode) :
+{
+	ASTNode opNode = factorNode;
+	ASTNode childOneNode = null;
+	ASTNode childTwoNode = null;
+}
+{
+	( <O_TIMES> childOneNode = factor() childTwoNode = term3Prime(childOneNode) {
+		opNode = factory.makeASTNode("MulNode");
+		opNode.addChild(factorNode);
+		opNode.addChild(childTwoNode);
+	}
+	| <O_MOD> childOneNode = factor() childTwoNode = term3Prime(childOneNode) {
+		opNode = factory.makeASTNode("ModNode");
+		opNode.addChild(factorNode);
+		opNode.addChild(childTwoNode);
+	}
+	|
+	{}
+	)
+
+	{ return opNode; }
+}
+
+ASTNode factor() :
+{
+ 	ASTNode factorNode = null;
+ 	ASTNode exprListNode = null;
+ 	Token id = null;
+}
+{
+	(
+
+	id = <O_IDENTIFIER> { factorNode = factory.makeASTNode("IdRefNode").addLabel(id.image); }
+	( <O_LBRACKET> exprListNode = expr() <O_RBRACKET> {
+			factorNode = factory.makeASTNode("ArrayRefNode").addLabel(id.image);
+			factorNode.addChild(exprListNode);
+		}
+		| <O_LPAREN> (exprListNode = expr_list())? <O_RPAREN> {
+			factorNode = factory.makeASTNode("CallNode").addLabel(id.image);
+			factorNode.addChild(exprListNode);
+		}
+	)?
+	| id = <O_INT> { factorNode = factory.makeASTNode("IntNode").addLabel(id.image); }
+	| id = <O_FLOATCON> { factorNode = factory.makeASTNode("FloatNode").addLabel(id.image); }
+	| id = <O_CHAR> { factorNode = factory.makeASTNode("CharNode").addLabel(id.image); }
+	| <O_LPAREN> factorNode = expr() <O_RPAREN> {
+		factorNode = factory.makeASTNode("ParenNode").addChild(factorNode);
+	}
+	| <O_NOT> factorNode = factor() {
+		factorNode = factory.makeASTNode("NotNode").addChild(factorNode);
+	}
+	)
+
+	{ return factorNode; }
+}
+
+ASTNode variable() : 
+{
+  	ASTNode defNode = null;
+  	ASTNode exprNode = null;
+  	Token id = null;
+}
+{
+	id = <O_IDENTIFIER> {
+	  	defNode = factory.makeASTNode("IdDefNode");
+	}
+	( <O_LBRACKET> exprNode = expr() <O_RBRACKET> {
+		defNode = factory.makeASTNode("ArrayDefNode");
+		defNode.addChild(exprNode);
+	})?
+
+	{
+	  	defNode.addLabel(id.image);
+	  	return defNode;
+	}
+}
+
+ASTNode string() :
+{
+	ASTNode stringNode = factory.makeASTNode("StringNode");
+	Token id = null;
+}
+{
+	 id = <O_STRING>
+	 {
+		stringNode.addLabel(id.image);
+		return stringNode;
+	 }
+}

@@ -1,0 +1,17 @@
+PROGRAM arith;
+
+VAR a, c : INTEGER;
+
+PROCEDURE x;
+
+VAR a : FLOAT;
+
+BEGIN
+  a := c
+END;
+
+BEGIN
+  a := a + c
+END
+
+
