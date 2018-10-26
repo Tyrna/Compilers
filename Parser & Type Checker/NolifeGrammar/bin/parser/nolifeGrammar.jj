@@ -267,15 +267,19 @@ ASTNode[] dim() :
  	Token id1 = null, id2 = null;
 }
 {
-	( id1 = <O_INT> <O_DOT> <O_DOT > id2 = <O_INT> 
-	| id1 = <O_CHAR> <O_DOT> <O_DOT > id2 = <O_CHAR> )
-
-	{
-	  	typeNodes[0] = factory.makeASTNode("SymNode");
-		typeNodes[0].addLabel(id1.image);
-		typeNodes[1] = factory.makeASTNode("SymNode");
+	( id1 = <O_INT> <O_DOT> <O_DOT > id2 = <O_INT> {
+	  	typeNodes[0] = factory.makeASTNode("IntNode");
+	  	typeNodes[1] = factory.makeASTNode("IntNode");
+	  	typeNodes[0].addLabel(id1.image);
 		typeNodes[1].addLabel(id2.image);
+		return typeNodes;
 
+	}
+	| id1 = <O_CHAR> <O_DOT> <O_DOT > id2 = <O_CHAR> ) { 
+		typeNodes[0] = factory.makeASTNode("CharNode");
+		typeNodes[1] = factory.makeASTNode("CharNode");
+		typeNodes[0].addLabel(id1.image);
+		typeNodes[1].addLabel(id2.image);
 		return typeNodes;
 	}
 }

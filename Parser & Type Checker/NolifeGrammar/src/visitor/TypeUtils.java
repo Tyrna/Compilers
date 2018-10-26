@@ -21,14 +21,19 @@ public final class TypeUtils {
 		
 	}
 	
-	protected class arraySymbol<T> extends Symbol {
-		T fromDim;
-		T toDim;
+	protected class arraySymbol extends Symbol {
+		int fromDim;
+		int toDim;
 		
-		public arraySymbol(T f, T d, int t, String n){
+		// 0 = int
+		// 2 = char
+		int typeOfDim;
+		
+		public arraySymbol(int f, int d, int t, String n, int type){
 			super(t, n);
 			fromDim = f;
 			toDim = d;
+			typeOfDim = type;
 		}
 	}
 	
@@ -58,6 +63,26 @@ public final class TypeUtils {
 	
 	protected static void addSymbol(String symName, int type) {
 		symTableStack.peek().put(symName, instance.new Symbol(type, symName));
+	}
+	
+	protected static void addArraySymbol(String symName, int type, String from, String to, int dimType) {
+		System.out.println(dimType);
+		if (dimType == 2) {
+			from = Character.toString(from.charAt(1));
+			to = Character.toString(to.charAt(1));
+		}
+			
+		symTableStack.peek().put(symName, instance.new arraySymbol(Integer.parseInt(from), Integer.parseInt(to), type, symName, dimType));
+	}
+	
+	protected static int[] getArrayRange(String symName) {
+		Symbol sym = symTableStack.peek().get(symName);
+		arraySymbol arr  = (arraySymbol) sym;
+		
+		
+		int [] toReturn = {arr.fromDim, arr.toDim};
+		return toReturn;
+		
 	}
 	
 	protected static int findSymbolType(String sym) {

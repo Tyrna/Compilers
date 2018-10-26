@@ -1,8 +1,12 @@
-PROGRAM Test1;
-	VAR 
-		x, y : INTEGER;
-		a : ARRAY[10..1] OF FLOAT;
+PROGRAM vararray;
 
-	BEGIN
-		x := a
-	END
+VAR a: ARRAY ['a'..'c'] OF INTEGER;
+    b: ARRAY [4..11] OF CHARACTER;
+    c: ARRAY [1..6] OF FLOAT;
+
+BEGIN
+
+   READ(a[0]);
+   READ(a[1])
+
+END

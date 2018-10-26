@@ -231,6 +231,11 @@ public class NolifeParser implements NolifeParserConstants {
       jj_consume_token(O_DOT);
       jj_consume_token(O_DOT);
       id2 = jj_consume_token(O_INT);
+                typeNodes[0] = factory.makeASTNode("IntNode");
+                typeNodes[1] = factory.makeASTNode("IntNode");
+                typeNodes[0].addLabel(id1.image);
+                typeNodes[1].addLabel(id2.image);
+                {if (true) return typeNodes;}
       break;
     case O_CHAR:
       id1 = jj_consume_token(O_CHAR);
@@ -243,11 +248,10 @@ public class NolifeParser implements NolifeParserConstants {
       jj_consume_token(-1);
       throw new ParseException();
     }
-                typeNodes[0] = factory.makeASTNode("SymNode");
+                typeNodes[0] = factory.makeASTNode("CharNode");
+                typeNodes[1] = factory.makeASTNode("CharNode");
                 typeNodes[0].addLabel(id1.image);
-                typeNodes[1] = factory.makeASTNode("SymNode");
                 typeNodes[1].addLabel(id2.image);
-
                 {if (true) return typeNodes;}
     throw new Error("Missing return statement in function");
   }
@@ -1077,19 +1081,6 @@ public class NolifeParser implements NolifeParserConstants {
     finally { jj_save(1, xla); }
   }
 
-  static private boolean jj_3R_10() {
-    if (jj_scan_token(O_IDENTIFIER)) return true;
-    Token xsp;
-    xsp = jj_scanpos;
-    if (jj_3R_11()) jj_scanpos = xsp;
-    return false;
-  }
-
-  static private boolean jj_3_2() {
-    if (jj_scan_token(O_ELSE)) return true;
-    return false;
-  }
-
   static private boolean jj_3R_11() {
     if (jj_scan_token(O_LBRACKET)) return true;
     return false;
@@ -1103,6 +1094,19 @@ public class NolifeParser implements NolifeParserConstants {
   static private boolean jj_3R_9() {
     if (jj_3R_10()) return true;
     if (jj_scan_token(O_ASSIGN)) return true;
+    return false;
+  }
+
+  static private boolean jj_3R_10() {
+    if (jj_scan_token(O_IDENTIFIER)) return true;
+    Token xsp;
+    xsp = jj_scanpos;
+    if (jj_3R_11()) jj_scanpos = xsp;
+    return false;
+  }
+
+  static private boolean jj_3_2() {
+    if (jj_scan_token(O_ELSE)) return true;
     return false;
   }
 

@@ -104,17 +104,17 @@ public class TypeChecker implements Visitor {
 	
 	@Override
 	public void visit(IntNode n) {
-		exprType = 0;
+		exprType = INTEGER;
 	}
 	
 	@Override
 	public void visit(FloatNode n) {
-		exprType = 1;
+		exprType = FLOAT;
 	}
 	
 	@Override
 	public void visit(CharNode n) {
-		exprType = 2;
+		exprType = CHAR;
 	}
 
 	@Override
@@ -194,7 +194,15 @@ public class TypeChecker implements Visitor {
 	
 	@Override
 	public void visit(ArrayRefNode arrayRefNode) {
-		
+		int sym;
+		if ((sym = TypeUtils.findSymbolType(arrayRefNode.getLabel())) >= 0) {
+			exprType = sym;
+			TypeUtils.referencedSym(arrayRefNode.getLabel());
+		}
+		else {
+			System.err.println("Undeclared variable: "+arrayRefNode.getLabel());
+			exprType = ANYTYPE;
+		}
 	}
 	
 	@Override
@@ -263,8 +271,11 @@ public class TypeChecker implements Visitor {
 		id = arrayTypeNode.getLabel();
 		if (TypeUtils.findInScope(id))
 			System.err.println("Variable already declared in current scope: " + id);
-		else
-			TypeUtils.addSymbol(id, declType);
+		else {
+			arrayTypeNode.getChild(0).accept(this);
+			//TypeUtils.addArraySymbol(id, declType, arrayTypeNode.getChild(0).getLabel(), arrayTypeNode.getChild(1).getLabel(), exprType);
+		}
+		
 	}
 
 	@Override
@@ -314,8 +325,7 @@ public class TypeChecker implements Visitor {
 	
 	@Override
 	public void visit(ReadNode readNode) {
-		
-		
+		readNode.getChild(0).accept(this);
 	}
 	
 	@Override
@@ -420,7 +430,27 @@ public class TypeChecker implements Visitor {
 	
 	@Override
 	public void visit(ArrayDefNode arrayDefNode) {
-		
+		int sym;
+		if ((sym = TypeUtils.findSymbolType(arrayDefNode.getLabel())) >= 0) {
+			exprType = sym;
+			arrayDefNode.getChild(0).accept(this);
+			
+			if (sym != exprType) {
+				System.err.printf("Array Index Type mismatch\n\t Array %s cannot index by %s, as it expects %s\n",
+						arrayDefNode.getLabel(), TypeUtils.typeCh(exprType), TypeUtils.typeCh(sym));
+			}
+			
+			int[] range = TypeUtils.getArrayRange(arrayDefNode.getLabel());
+			int index = Integer.parseInt(arrayDefNode.getChild(0).getLabel());
+			if (range[0] > index || index > range[1]) {
+				System.err.printf("Array out of bounds\n\t Cannot access index %d on array %s where bounds are [%d ... %d]\n",
+						index, arrayDefNode.getLabel(), range[0], range[1]);
+			}
+		}
+		else {
+			System.err.println("Undeclared variable: "+arrayDefNode.getLabel());
+			exprType = ANYTYPE;
+		}
 		
 	}
 	
