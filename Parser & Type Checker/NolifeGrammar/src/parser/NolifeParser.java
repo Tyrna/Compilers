@@ -36,7 +36,7 @@ public class NolifeParser implements NolifeParserConstants {
               //System.out.println("---------- Type checking...");
               node.accept(u);
               //System.out.println("---------- Done ----------");
-              //System.out.println("Program is:\n\n"+v.getSrc());
+              System.out.println("Program is:\u005cn\u005cn"+v.getSrc());
             } catch (ParseException e) {
               System.err.println("Syntax Error: "+e.getMessage());
             }

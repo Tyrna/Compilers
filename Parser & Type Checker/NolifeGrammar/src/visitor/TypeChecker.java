@@ -3,14 +3,9 @@
  */
 package visitor;
 
-import java.util.HashMap;
-import java.util.Stack;
-
 import ast.*;
-/**
- * @author carr
- *
- */
+import visitor.TypeUtils;
+
 public class TypeChecker implements Visitor {
 
 	//RealType = Children
@@ -20,14 +15,12 @@ public class TypeChecker implements Visitor {
 	private final int CHAR = 2;
 	private final int ANYTYPE = 3;
 	private int declType;
-	private String defVal;
 	private int exprType;
 	private String id;
-	
-	private Stack<HashMap<String, Integer>> symTableStack = new Stack<HashMap<String, Integer>>();
 	/**
 	 * 
 	 */
+	
 	public TypeChecker() {
 	}
 	
@@ -39,24 +32,33 @@ public class TypeChecker implements Visitor {
 		
 		if (leftType == rightType)
 			exprType = leftType;
+		else if (leftType == ANYTYPE && rightType != ANYTYPE)
+			exprType = rightType;
+		else if (rightType == ANYTYPE && leftType != ANYTYPE)
+			exprType = leftType;
 		else if (leftType == ANYTYPE || rightType == ANYTYPE)
 			exprType = ANYTYPE;
 		else if (leftType == FLOAT && rightType == INTEGER ||
 					leftType == INTEGER && rightType == FLOAT)
 			exprType = FLOAT;
 		else {
-			System.err.println("Type error");
+			System.err.printf("Type error\n\tCannot do arithmetic on type %s to type %s\n",
+					TypeUtils.typeCh(leftType), TypeUtils.typeCh(rightType));
 			exprType = ANYTYPE;
 		}		
 	}
 	
 	private void compTypeCheck(BinaryNode n) {
-		n.getLeft().accept(this);
+		n.getChild(0).accept(this);
 		int leftType = exprType;
-		n.getRight().accept(this);
+		n.getChild(1).accept(this);
 		int rightType = exprType;
 		
 		if (leftType == rightType)
+			exprType = leftType;
+		else if (leftType == ANYTYPE && rightType != ANYTYPE)	
+			exprType = rightType;
+		else if (rightType == ANYTYPE && leftType != ANYTYPE)
 			exprType = leftType;
 		else if (leftType == ANYTYPE || rightType == ANYTYPE)
 			exprType = ANYTYPE;
@@ -64,7 +66,33 @@ public class TypeChecker implements Visitor {
 					leftType == INTEGER && rightType == FLOAT)
 			exprType = INTEGER;
 		else {
-			System.err.println("Type error");
+			System.err.printf("Type error\n\tCannot compare type %s to type %s\n",
+					TypeUtils.typeCh(leftType), TypeUtils.typeCh(rightType));
+			exprType = ANYTYPE;
+		}		
+	}
+	
+	private void logicTypeCheck(BinaryNode n) {
+		n.getLeft().accept(this);
+		int leftType = exprType;
+		n.getRight().accept(this);
+		int rightType = exprType;
+		
+		if (leftType == rightType)
+			exprType = leftType;
+		else if (leftType == ANYTYPE && rightType != ANYTYPE)
+			exprType = rightType;
+		else if (rightType == ANYTYPE && leftType != ANYTYPE)
+			exprType = leftType;
+		else if (leftType == ANYTYPE || rightType == ANYTYPE)
+			exprType = ANYTYPE;
+		else if (leftType == FLOAT && rightType == INTEGER)
+			exprType = FLOAT;
+		else if (leftType == INTEGER && rightType == FLOAT)
+			exprType = INTEGER;
+		else {
+			System.err.printf("Type error\n\tCannot do logical operation on type %s to type %s\n",
+					TypeUtils.typeCh(leftType), TypeUtils.typeCh(rightType));
 			exprType = ANYTYPE;
 		}		
 	}
@@ -89,33 +117,21 @@ public class TypeChecker implements Visitor {
 		exprType = 2;
 	}
 
-	/* (non-Javadoc)
-	 * @see visitor.Visitor#visit(astv3.AddNode)
-	 */
 	@Override
 	public void visit(AddNode n) {
 		arithTypeCheck(n);
 	}
 
-	/* (non-Javadoc)
-	 * @see visitor.Visitor#visit(astv3.SubNode)
-	 */
 	@Override
 	public void visit(SubNode n) {
 		arithTypeCheck(n);
 	}
 
-	/* (non-Javadoc)
-	 * @see visitor.Visitor#visit(astv3.DivNode)
-	 */
 	@Override
 	public void visit(ModNode n) {
 		arithTypeCheck(n);
 	}
 
-	/* (non-Javadoc)
-	 * @see visitor.Visitor#visit(astv3.MulNode)
-	 */
 	@Override
 	public void visit(MulNode n) {
 		arithTypeCheck(n);
@@ -153,22 +169,22 @@ public class TypeChecker implements Visitor {
 	
 	@Override
 	public void visit(AndNode n) {
-		//typeCheck(n);
+		logicTypeCheck(n);
 	}
 	
 	@Override
 	public void visit(OrNode n) {
-		//typeCheck(n);
+		logicTypeCheck(n);
 	}
 
-	/* (non-Javadoc)
-	 * @see visitor.Visitor#visit(astv3.IdNode)
-	 */
 	@Override
 	public void visit(IdRefNode n) {
 		int sym;
-		if ((sym = findSymbol(n.getLabel())) >= 0)
+		
+		if ((sym = TypeUtils.findSymbolType(n.getLabel())) >= 0) {
 			exprType = sym;
+			TypeUtils.referencedSym(n.getLabel());
+		}
 		else {
 			System.err.println("Undeclared variable: "+n.getLabel());
 			exprType = ANYTYPE;
@@ -188,7 +204,7 @@ public class TypeChecker implements Visitor {
 
 	@Override
 	public void visit(ParenNode parenNode) {
-
+		parenNode.getChild(0).accept(this);
 	}
 	
 
@@ -211,33 +227,25 @@ public class TypeChecker implements Visitor {
 	 */
 	@Override
 	public void visit(ProgramNode programNode) {
-		newFrame();
+		TypeUtils.newFrame();
 		for (ASTNode n : programNode.getChildren())
 			n.accept(this);
-		remFrame();
+		TypeUtils.checkRefSym();
+		TypeUtils.remFrame();
 	}
 
-	/* (non-Javadoc)
-	 * @see visitor.Visitor#visit(astv3.VarDeclsNode)
-	 */
 	@Override
 	public void visit(VarDeclsNode varDeclsNode) {
 		for (ASTNode n : varDeclsNode.getChildren())
 			n.accept(this);
 	}
 
-	/* (non-Javadoc)
-	 * @see visitor.Visitor#visit(astv3.IntTypeNode)
-	 */
 	@Override
 	public void visit(IntTypeNode intTypeNode) {
 		declType = INTEGER;
 		intTypeNode.getChild(0).accept(this);
 	}
 
-	/* (non-Javadoc)
-	 * @see visitor.Visitor#visit(astv3.FloatTypeNode)
-	 */
 	@Override
 	public void visit(FloatTypeNode floatTypeNode) {
 		declType = FLOAT;
@@ -252,12 +260,13 @@ public class TypeChecker implements Visitor {
 	
 	@Override
 	public void visit(ArrayDeclNode arrayTypeNode) {
-		
+		id = arrayTypeNode.getLabel();
+		if (TypeUtils.findInScope(id))
+			System.err.println("Variable already declared in current scope: " + id);
+		else
+			TypeUtils.addSymbol(id, declType);
 	}
 
-	/* (non-Javadoc)
-	 * @see visitor.Visitor#visit(astv3.AssignNode)
-	 */
 	@Override
 	public void visit(AssignNode assignNode) {
 		assignNode.getLHS().accept(this);
@@ -269,10 +278,10 @@ public class TypeChecker implements Visitor {
 		if (lhsType != rhsType) {
 			if (!(lhsType == FLOAT && rhsType == INTEGER ||
 					lhsType == INTEGER && rhsType == FLOAT)) {
-				if (rhsType != ANYTYPE) {
+				if (!(rhsType == ANYTYPE || lhsType == ANYTYPE)) {
 					System.err.println("Assignment type conflict:");
 					System.err.printf("\tVariable \'%s\' expects type: %s but received: %s\n", assignNode.getLHS().getLabel(),
-							typeCh(lhsType), typeCh(rhsType));
+							TypeUtils.typeCh(lhsType), TypeUtils.typeCh(rhsType));
 				}
 			}
 		}
@@ -280,8 +289,10 @@ public class TypeChecker implements Visitor {
 	
 	@Override
 	public void visit(IfStmtNode ifStmtNode) {
-		
-		
+		ifStmtNode.getChild(0).accept(this); 
+		ifStmtNode.getChild(1).accept(this); 
+		if (ifStmtNode.getChild(2) != null) 
+			ifStmtNode.getChild(2).accept(this);
 	}
 	
 	@Override
@@ -298,8 +309,7 @@ public class TypeChecker implements Visitor {
 	
 	@Override
 	public void visit(WriteNode writeNode) {
-		
-		
+		writeNode.getChild(0).accept(this);
 	}
 	
 	@Override
@@ -351,10 +361,12 @@ public class TypeChecker implements Visitor {
 	
 	@Override
 	public void visit(SubProgDeclNode subProgDeclNode) {
-		newFrame();
+		TypeUtils.newFrame();
 		for (ASTNode n : subProgDeclNode.getChildren())
 			n.accept(this);
-		remFrame();
+		
+		TypeUtils.checkRefSym();
+		TypeUtils.remFrame();
 	}
 	
 	@Override
@@ -389,16 +401,16 @@ public class TypeChecker implements Visitor {
 	@Override
 	public void visit(IdDeclNode idDeclNode) {
 		id = idDeclNode.getLabel();
-		if (findInScope(id))
+		if (TypeUtils.findInScope(id))
 			System.err.println("Variable already declared in current scope: " + id);
 		else
-			addSymbol(id, declType);
+			TypeUtils.addSymbol(id, declType);
 	}
 
 	@Override
 	public void visit(IdDefNode n) {
 		int sym;
-		if ((sym = findSymbol(n.getLabel())) >= 0)
+		if ((sym = TypeUtils.findSymbolType(n.getLabel())) >= 0)
 			exprType = sym;
 		else {
 			System.err.println("Undeclared variable: "+n.getLabel());
@@ -410,49 +422,6 @@ public class TypeChecker implements Visitor {
 	public void visit(ArrayDefNode arrayDefNode) {
 		
 		
-	}
-	
-	private String typeCh(int n) {
-		
-		switch(n) {
-			case 0:
-				return "INTEGER";
-			case 1:
-				return "FLOAT";
-			case 2:
-				return "CHAR";
-			case 3:
-				return "ANYTYPE";
-			default:
-				return null;
-		}
-	}
-	
-	private void newFrame() {
-		symTableStack.push(new HashMap<String, Integer>());
-	}
-	
-	private void remFrame() {
-		symTableStack.pop();
-	}
-	
-	private void addSymbol(String sym, int type) {
-		symTableStack.peek().put(sym, type);
-	}
-	
-	private int findSymbol(String sym) {
-		if (symTableStack.peek().containsKey(sym))
-			return symTableStack.peek().get(sym);
-		else if (symTableStack.get(0).containsKey(sym))
-			return symTableStack.get(0).get(sym);
-		else 
-			return -1;
-	}
-	
-	private boolean findInScope(String sym) {
-		if (symTableStack.peek().containsKey(sym))
-			return true;
-		return false;
 	}
 	
 }

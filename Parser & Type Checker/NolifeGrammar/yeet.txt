@@ -1,17 +1,8 @@
-PROGRAM arith;
+PROGRAM Test1;
+	VAR 
+		x, y : INTEGER;
+		a : ARRAY[10..1] OF FLOAT;
 
-VAR a, c : INTEGER;
-
-PROCEDURE x;
-
-VAR a : FLOAT;
-
-BEGIN
-  a := c
-END;
-
-BEGIN
-  a := a + c
-END
-
-
+	BEGIN
+		x := a
+	END
