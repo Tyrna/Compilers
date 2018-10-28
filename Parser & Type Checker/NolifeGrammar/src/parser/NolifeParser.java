@@ -11,13 +11,12 @@ public class NolifeParser implements NolifeParserConstants {
             NolifeParser parser;
             java.io.InputStream input;
 
-            /*if (args.length < 1) {
-	      	System.out.println("Usage: java -jar nlc.jar <input file>");
-	      	return;
-	    }*/
+            if (args.length < 1) {
+                System.out.println("Usage: java -jar nlc.jar <input file>");
+                return;
+            }
 
-            //String filename = new String(args[args.length - 1]);
-            String filename = "yeet.txt";
+            String filename = new String(args[args.length - 1]);
             try {
                 input = new java.io.FileInputStream(filename);
             } catch (java.io.FileNotFoundException e) {
@@ -32,11 +31,11 @@ public class NolifeParser implements NolifeParserConstants {
               //SourceVisitor v = new SourceVisitor();
               ASTBuildVisitor v = new ASTBuildVisitor();
               node.accept(v);
+              System.out.println("\u005cn------------ Program is:\u005cn\u005cn"+v.getSrc());
               TypeChecker u = new TypeChecker();
-              //System.out.println("---------- Type checking...");
+              System.out.println("\u005cn\u005cn---------- Type checking... \u005cn");
               node.accept(u);
               //System.out.println("---------- Done ----------");
-              System.out.println("Program is:\u005cn\u005cn"+v.getSrc());
             } catch (ParseException e) {
               System.err.println("Syntax Error: "+e.getMessage());
             }

@@ -8,8 +8,6 @@ import visitor.TypeUtils;
 
 public class TypeChecker implements Visitor {
 
-	//RealType = Children
-	//ConvertedType = Parent
 	private final int INTEGER = 0;
 	private final int FLOAT = 1;
 	private final int CHAR = 2;
@@ -102,7 +100,7 @@ public class TypeChecker implements Visitor {
 	
 	@Override
 	public void visit(SymNode n) {
-		
+		//??
 	}
 	
 	@Override
@@ -468,28 +466,43 @@ public class TypeChecker implements Visitor {
 		for (ASTNode n : subProgDeclNode.getChildren()) {
 			switch(n.getClass().getSimpleName()) {
 				case "ProcNode" :
-					TypeUtils.addFuncSymbol(n.getLabel(), 4, false);
-					if (n.getChild(0) != null) 
-						TypeUtils.addParamSymbolsToFunc(n);
+					if (TypeUtils.findInScope(n.getLabel())) 
+						System.err.println("Variable already declared in global scope: " + n.getLabel());
+					else {
+						TypeUtils.addFuncSymbol(n.getLabel(), 4, false);
+						if (n.getChild(0) != null) 
+							TypeUtils.addParamSymbolsToFunc(n);
+					}
 					break;
 				case "IntTypeNode" :
-					TypeUtils.addFuncSymbol(n.getChild(0).getLabel(), 0, true);
-					if (n.getChild(0).getChild(0) != null) 
-						TypeUtils.addParamSymbolsToFunc(n.getChild(0));
+					if (TypeUtils.findInScope(n.getChild(0).getLabel())) 
+						System.err.println("Variable already declared in global scope: " + n.getChild(0).getLabel());
+					else {
+						TypeUtils.addFuncSymbol(n.getChild(0).getLabel(), 0, true);
+						if (n.getChild(0).getChild(0) != null) 
+							TypeUtils.addParamSymbolsToFunc(n.getChild(0));
+					}
 					break;
 				case "FloatTypeNode" :
-					TypeUtils.addFuncSymbol(n.getChild(0).getLabel(), 1, true);
-					if (n.getChild(0).getChild(0) != null) 
-						TypeUtils.addParamSymbolsToFunc(n.getChild(0));
+					if (TypeUtils.findInScope(n.getChild(0).getLabel())) 
+						System.err.println("Variable already declared in global scope: " + n.getChild(0).getLabel());
+					else {
+						TypeUtils.addFuncSymbol(n.getChild(0).getLabel(), 1, true);
+						if (n.getChild(0).getChild(0) != null) 
+							TypeUtils.addParamSymbolsToFunc(n.getChild(0));
+					}
 					break;
 				case "CharTypeNode" :
-					TypeUtils.addFuncSymbol(n.getChild(0).getLabel(), 2, true);
-					if (n.getChild(0).getChild(0) != null) 
-						TypeUtils.addParamSymbolsToFunc(n.getChild(0));
+					if (TypeUtils.findInScope(n.getChild(0).getLabel())) 
+						System.err.println("Variable already declared in global scope: " + n.getChild(0).getLabel());
+					else {
+						TypeUtils.addFuncSymbol(n.getChild(0).getLabel(), 2, true);
+						if (n.getChild(0).getChild(0) != null) 
+							TypeUtils.addParamSymbolsToFunc(n.getChild(0));
+					}
 					break;
 			}
 		}
-			
 		for (ASTNode n : subProgDeclNode.getChildren()) {
 			TypeUtils.newFrame();
 			n.accept(this);
@@ -578,14 +591,14 @@ public class TypeChecker implements Visitor {
 				callNode.getChild(0).getChild(i++).accept(this);
 				
 				if (exprType != sym.type) {
-					if (!(exprType == FLOAT && sym.type == INTEGER ||
-							exprType == INTEGER && sym.type == FLOAT)) {
+					//if (!(exprType == FLOAT && sym.type == INTEGER ||
+							//exprType == INTEGER && sym.type == FLOAT)) {
 						if (!(sym.type == ANYTYPE || exprType == ANYTYPE)) {
 							System.err.printf("Function parameter and Call type mismatch\n\t On function call '%s', "
 									+ "we are given type %s, when we are expecting %s for '%s' variable\n",
 									funcSymbol.name, TypeUtils.typeCh(exprType), TypeUtils.typeCh(sym.type), sym.name);
 						}
-					}
+					//}
 				}
 			}
 		}

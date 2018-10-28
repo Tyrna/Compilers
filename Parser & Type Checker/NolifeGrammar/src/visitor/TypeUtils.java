@@ -137,7 +137,7 @@ public final class TypeUtils {
 		}
 
 		//If a char literal...
-		if (arrayNode.getChild(0).getClass().getSimpleName() == "CharNode") {
+		else if (arrayNode.getChild(0).getClass().getSimpleName().equals("CharNode")) {
 			char[] range = {arr.charFromDim, arr.charToDim};
 			char index = arrayNode.getChild(0).getLabel().charAt(1);
 			if (range[0] > index || index > range[1]) {
@@ -146,7 +146,7 @@ public final class TypeUtils {
 			}
 		}
 		//If an int literal...
-		else if (arrayNode.getChild(0).getClass().getSimpleName() == "IntNode") {
+		else if (arrayNode.getChild(0).getClass().getSimpleName().equals("IntNode")) {
 			int[] range = {arr.intFromDim, arr.intToDim};
 			int index = Integer.parseInt(arrayNode.getChild(0).getLabel());
 			if (range[0] > index || index > range[1]) {
@@ -170,12 +170,17 @@ public final class TypeUtils {
 		switch(varType) {
 			case "Symbol" : {
 				if (!(sym.getClass().getSimpleName()).equals(varType)) 
-					return -1;
+					if(!(sym.getClass().getSimpleName()).equals("funcSymbol"))
+						return -1;
+				
+				break;
 			}
 			
 			case "arraySymbol" : {
 				if (!(sym.getClass().getSimpleName()).equals(varType)) 
 					return -1;
+				
+				break;
 			}
 		}
 		
