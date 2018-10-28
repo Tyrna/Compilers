@@ -307,16 +307,13 @@ public class ASTBuildVisitor implements Visitor {
 	
 	@Override
 	public void visit(CaseStmtNode caseStmtNode) {
-		src += "\n" + prefix + "CASENAME";
+		src += "\n" + prefix + "CASETMT";
 		addPrefix();
 		caseStmtNode.getChild(0).accept(this);
-		delPrefix();
-		src += "\n" + prefix + "OF";
-		if (caseStmtNode.getChild(1) != null) {
-			addPrefix();
+		if (caseStmtNode.getChild(1) != null) 
 			caseStmtNode.getChild(1).accept(this);
-			delPrefix();
-		}
+
+		delPrefix();
 	}
 	
 	@Override

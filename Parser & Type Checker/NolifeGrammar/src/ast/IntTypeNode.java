@@ -5,7 +5,7 @@ import visitor.Visitor;
 public class IntTypeNode extends ASTNode {
 
 	public IntTypeNode() {
-		// TODO Auto-generated constructor stub
+		super();
 	}
 
 	@Override

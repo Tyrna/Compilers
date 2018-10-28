@@ -2,6 +2,7 @@ package visitor;
 
 import java.util.HashMap;
 import java.util.Stack;
+import java.util.LinkedList;
 
 import ast.ASTNode;
 
@@ -24,7 +25,7 @@ public final class TypeUtils {
 	
 	protected class funcSymbol extends Symbol {
 		
-		HashMap<String,Symbol> parameters = new HashMap<String, Symbol>();
+		LinkedList<Symbol> parameters = new LinkedList<Symbol>();
 		boolean returns = true;
 		
 		public funcSymbol(int t, String n) {
@@ -104,9 +105,13 @@ public final class TypeUtils {
 	}
 	
 	protected static arraySymbol getArraySymbol(String symName) {
-		Symbol sym = symTableStack.peek().get(symName);
-		arraySymbol arr  = (arraySymbol) sym;
+		Symbol sym;
 		
+		if ((sym = symTableStack.peek().get(symName)) == null)	
+			if ((sym = symTableStack.get(0).get(symName)) == null)
+				return null;
+				
+		arraySymbol arr  = (arraySymbol) sym;
 		return arr;
 		
 	}
@@ -151,13 +156,30 @@ public final class TypeUtils {
 		}
 	}
 	
-	protected static int findSymbolType(String sym) {
+	protected static Symbol findSymbolType(String sym) {
 		if (symTableStack.peek().containsKey(sym)) 
-			return symTableStack.peek().get(sym).type;
+			return symTableStack.peek().get(sym);
 		else if (symTableStack.get(0).containsKey(sym))
-			return symTableStack.get(0).get(sym).type;
+			return symTableStack.get(0).get(sym);
 		else 
-			return -1;
+			return null;
+	}
+	
+	protected static int checkTypeOfSymbol(Symbol sym, String varType) {
+		
+		switch(varType) {
+			case "Symbol" : {
+				if (!(sym.getClass().getSimpleName()).equals(varType)) 
+					return -1;
+			}
+			
+			case "arraySymbol" : {
+				if (!(sym.getClass().getSimpleName()).equals(varType)) 
+					return -1;
+			}
+		}
+		
+		return sym.type;
 	}
 	
 	protected static boolean findInScope(String sym) {
@@ -219,7 +241,7 @@ public final class TypeUtils {
 			//Last element added to the hashmap on current scope...
 			//Symbol lastOne = symTableStack.peek().get(paramNode.getChild(0).getLabel());
 			//Add to parameters in procedure node, a.k.a last symbol added to the global scope
-			fSym.parameters.put(paramNode.getChild(0).getLabel(), paramSym);
+			fSym.parameters.add(paramSym);
 		}
 	}
 }

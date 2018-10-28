@@ -5,6 +5,7 @@ import visitor.Visitor;
 public class IdRefNode extends ASTNode {
 	
 	public IdRefNode() {
+		super();
 	}
 
 	@Override

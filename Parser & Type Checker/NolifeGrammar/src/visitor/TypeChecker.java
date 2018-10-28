@@ -15,14 +15,13 @@ public class TypeChecker implements Visitor {
 	private final int CHAR = 2;
 	private final int ANYTYPE = 3;
 	private final int NOTYPE = 4;
+	private boolean isItCall = false;
 	private int declType;
 	private int exprType;
-	private int funcType;
 	private String id;
 
 	
-	public TypeChecker() {
-	}
+	public TypeChecker() {}
 	
 	private void arithTypeCheck(BinaryNode n) {
 		n.getLeft().accept(this);
@@ -187,34 +186,57 @@ public class TypeChecker implements Visitor {
 
 	@Override
 	public void visit(IdRefNode n) {
-		int sym;
+		TypeUtils.Symbol sym;
+		int symType;
 		
-		if ((sym = TypeUtils.findSymbolType(n.getLabel())) >= 0) {
-			exprType = sym;
-			TypeUtils.referencedSym(n.getLabel());
+		if ((sym = TypeUtils.findSymbolType(n.getLabel())) != null) {
+			//If it is NOT a call 
+			if (!(isItCall)) {
+				if ((symType = TypeUtils.checkTypeOfSymbol(sym, "Symbol")) >= 0) {
+					exprType = symType;
+				}
+				else {
+					System.err.printf("Incorrect Number of Dimensions\n\tVariable %s does not have given dimension\n",
+							n.getLabel());
+					exprType = ANYTYPE;
+				}
+			}
+			else {
+				exprType = TypeUtils.checkTypeOfSymbol(sym, "");
+			}
 		}
 		else {
 			System.err.println("Undeclared variable: "+n.getLabel());
 			exprType = ANYTYPE;
 		}
 		
+		TypeUtils.referencedSym(n.getLabel());
 	}
 	
 	
 	@Override
 	public void visit(ArrayRefNode arrayRefNode) {
-		int arrSym;
+		int arrSymType;
+		TypeUtils.Symbol arrSym;
 		
-		if ((arrSym = TypeUtils.findSymbolType(arrayRefNode.getLabel())) >= 0) {
-			arrayRefNode.getChild(0).accept(this);
-			TypeUtils.checkMyArray(arrayRefNode, exprType);
-			exprType = arrSym;
-			TypeUtils.referencedSym(arrayRefNode.getLabel());
+		if ((arrSym = TypeUtils.findSymbolType(arrayRefNode.getLabel())) != null) {
+			if ((arrSymType = TypeUtils.checkTypeOfSymbol(arrSym, "arraySymbol")) >= 0) {
+				arrayRefNode.getChild(0).accept(this);
+				TypeUtils.checkMyArray(arrayRefNode, exprType);
+				exprType = arrSymType;
+			}
+			else {
+				System.err.printf("Incorrect Number of Dimensions\n\tVariable %s does not have given dimension\n",
+						arrayRefNode.getLabel());
+				exprType = ANYTYPE;
+			}
 		}
 		else {
 			System.err.println("Undeclared array: "+arrayRefNode.getLabel());
 			exprType = ANYTYPE;
 		}
+		
+		TypeUtils.referencedSym(arrayRefNode.getLabel());
 	}
 	
 	@Override
@@ -238,18 +260,12 @@ public class TypeChecker implements Visitor {
 		}
 	}
 
-	/* (non-Javadoc)
-	 * @see visitor.Visitor#visit(astv3.DeclNode)
-	 */
 	@Override
 	public void visit(DeclNode declNode) {
 		for (ASTNode n : declNode.getChildren())
 			n.accept(this);
 	}
 
-	/* (non-Javadoc)
-	 * @see visitor.Visitor#visit(astv3.ProgramNode)
-	 */
 	@Override
 	public void visit(ProgramNode programNode) {
 		TypeUtils.newFrame();
@@ -337,17 +353,24 @@ public class TypeChecker implements Visitor {
 	public void visit(ProcCallNode procCallNode) {
 		TypeUtils.funcSymbol funcSymbol = (TypeUtils.funcSymbol) TypeUtils.symTableStack.get(0).get(procCallNode.getLabel());
 	
-		//Check if procedure was declared and if its a procedure, not a function
-			if (funcSymbol == null || funcSymbol.returns) {
+			//Check if procedure was declared
+			if (funcSymbol == null) {
 				System.err.printf("Procedure '%s' was never declared\n", procCallNode.getLabel());
+				return;
+			}
+			
+			//Check that it is a procedure, not a function
+			if (funcSymbol.returns) {
+				System.err.printf("Cannot invoke '%s' with a Procedure Call as it is a Function\n", procCallNode.getLabel());
+				exprType = ANYTYPE;
 				return;
 			}
 			
 			//Check if there are no parameters
 			if (procCallNode.getChild(0) == null) {
-				if (0 != funcSymbol.parameters.values().size()) {
+				if (0 != funcSymbol.parameters.size()) {
 					System.err.printf("Incorrect amount of parameters\n\t On call '%s', we are given %d parameter(s), when we are expecting %d\n",
-							funcSymbol.name, 0, funcSymbol.parameters.values().size());
+							funcSymbol.name, 0, funcSymbol.parameters.size());
 				}
 				
 				exprType = funcSymbol.type;
@@ -358,14 +381,15 @@ public class TypeChecker implements Visitor {
 		//procCallNode.getChild(0).accept(this);
 		
 		//First check there is an correct amount of parameters?
-		if (procCallNode.getChild(0).getChildren().size() != funcSymbol.parameters.values().size()) {
+		if (procCallNode.getChild(0).getChildren().size() != funcSymbol.parameters.size()) {
 			System.err.printf("Incorrect amount of parameters\n\t On call '%s', we are given %d parameter(s), when we are expecting %d\n",
-					funcSymbol.name, procCallNode.getChild(0).getChildren().size(), funcSymbol.parameters.values().size());
+					funcSymbol.name, procCallNode.getChild(0).getChildren().size(), funcSymbol.parameters.size());
 		}
 		//Then check for type of parameters
 		else {
 			int i = 0;
-			for (TypeUtils.Symbol sym : funcSymbol.parameters.values()) {
+			isItCall = true;
+			for (TypeUtils.Symbol sym : funcSymbol.parameters) {
 				procCallNode.getChild(0).getChild(i++).accept(this);
 				
 				if (exprType != sym.type) {
@@ -381,11 +405,12 @@ public class TypeChecker implements Visitor {
 			}
 		}
 		
+		isItCall = false;
 		TypeUtils.referencedSym(procCallNode.getLabel());
 	}
 	
 	@Override
-	public void visit(WriteNode writeNode) {
+	public void visit(WriteNode writeNode) {	
 		writeNode.getChild(0).accept(this);
 	}
 	
@@ -401,26 +426,29 @@ public class TypeChecker implements Visitor {
 	
 	@Override
 	public void visit(CaseStmtNode caseStmtNode) {
+		caseStmtNode.getChild(0).accept(this);
 		
-		
+		if (caseStmtNode.getChild(1) != null)
+			caseStmtNode.getChild(1).accept(this);
 	}
 	
 	@Override
 	public void visit(CaseListNode caseListNode) {
-		
-		
+		for (ASTNode child : caseListNode.getChildren())
+			child.accept(this);
 	}
 	
 	@Override
 	public void visit(CaseNode caseNode) {
-		
+		caseNode.getChild(0).accept(this);
+		caseNode.getChild(1).accept(this);
 		
 	}
 	
 	@Override
 	public void visit(CaseLabelsNode caseLabelsNode) {
-		
-		
+		for (ASTNode child : caseLabelsNode.getChildren())
+			child.accept(this);
 	}
 	
 	@Override
@@ -509,18 +537,25 @@ public class TypeChecker implements Visitor {
 	public void visit(CallNode callNode) {
 		TypeUtils.funcSymbol funcSymbol = (TypeUtils.funcSymbol) TypeUtils.symTableStack.get(0).get(callNode.getLabel());
 		
-		//Check if function was declared and if its a function, not a procedure
-		if (funcSymbol == null || !(funcSymbol.returns)) {
+		//Check if function was declared
+		if (funcSymbol == null) {
 			System.err.printf("Function '%s' was never declared\n", callNode.getLabel());
+			exprType = ANYTYPE;
+			return;
+		}
+		
+		//Check it is a function, not a procedure
+		if (!(funcSymbol.returns)) {
+			System.err.printf("Cannot invoke '%s' with a Function Call as it is a Procedure\n", callNode.getLabel());
 			exprType = ANYTYPE;
 			return;
 		}
 		
 		//Check if there are no parameters
 		if (callNode.getChild(0) == null) {
-			if (0 != funcSymbol.parameters.values().size()) {
+			if (0 != funcSymbol.parameters.size()) {
 				System.err.printf("Incorrect amount of parameters\n\t On call '%s', we are given %d parameter(s), when we are expecting %d\n",
-						funcSymbol.name, 0, funcSymbol.parameters.values().size());
+						funcSymbol.name, 0, funcSymbol.parameters.size());
 			}
 			
 			exprType = funcSymbol.type;
@@ -531,14 +566,15 @@ public class TypeChecker implements Visitor {
 		//callNode.getChild(0).accept(this);
 		
 		//First check there is an correct amount of parameters?
-		if (callNode.getChild(0).getChildren().size() != funcSymbol.parameters.values().size()) {
+		if (callNode.getChild(0).getChildren().size() != funcSymbol.parameters.size()) {
 			System.err.printf("Incorrect amount of parameters\n\t On call '%s', we are given %d parameter(s), when we are expecting %d\n",
-					funcSymbol.name, callNode.getChild(0).getChildren().size(), funcSymbol.parameters.values().size());
+					funcSymbol.name, callNode.getChild(0).getChildren().size(), funcSymbol.parameters.size());
 		}
 		//Then check for type of parameters
 		else {
 			int i = 0;
-			for (TypeUtils.Symbol sym : funcSymbol.parameters.values()) {
+			isItCall = true;
+			for (TypeUtils.Symbol sym : funcSymbol.parameters) {
 				callNode.getChild(0).getChild(i++).accept(this);
 				
 				if (exprType != sym.type) {
@@ -554,6 +590,7 @@ public class TypeChecker implements Visitor {
 			}
 		}
 		
+		isItCall = false;
 		exprType = funcSymbol.type;
 		TypeUtils.referencedSym(callNode.getLabel());
 	}
@@ -569,9 +606,19 @@ public class TypeChecker implements Visitor {
 
 	@Override
 	public void visit(IdDefNode n) {
-		int sym;
-		if ((sym = TypeUtils.findSymbolType(n.getLabel())) >= 0)
-			exprType = sym;
+		TypeUtils.Symbol sym;
+		int symType;
+		
+		if ((sym = TypeUtils.findSymbolType(n.getLabel())) != null) {
+			if ((symType = TypeUtils.checkTypeOfSymbol(sym, "Symbol")) >= 0) {
+				exprType = symType;
+			}
+			else {
+				System.err.printf("Incorrect Number of Dimensions\n\tVariable %s does not have given dimension\n",
+						n.getLabel());
+				exprType = ANYTYPE;
+			}
+		}
 		else {
 			System.err.println("Undeclared variable: "+n.getLabel());
 			exprType = ANYTYPE;
@@ -580,13 +627,20 @@ public class TypeChecker implements Visitor {
 	
 	@Override
 	public void visit(ArrayDefNode arrayDefNode) {
+		TypeUtils.Symbol arrSym;
+		int arrSymType;
 		
-		int arrSym;
-		
-		if ((arrSym = TypeUtils.findSymbolType(arrayDefNode.getLabel())) >= 0) {
-			arrayDefNode.getChild(0).accept(this);
-			TypeUtils.checkMyArray(arrayDefNode, exprType);
-			exprType = arrSym;
+		if ((arrSym = TypeUtils.findSymbolType(arrayDefNode.getLabel())) != null) {
+			if ((arrSymType = TypeUtils.checkTypeOfSymbol(arrSym, "arraySymbol")) >= 0) {
+				arrayDefNode.getChild(0).accept(this);
+				TypeUtils.checkMyArray(arrayDefNode, exprType);
+				exprType = arrSymType;
+			}
+			else {
+				System.err.printf("Incorrect Number of Dimensions\n\tVariable %s does not have given dimension\n",
+						arrayDefNode.getLabel());
+				exprType = ANYTYPE;
+			}
 		}
 		else {
 			System.err.println("Undeclared variable: "+arrayDefNode.getLabel());
