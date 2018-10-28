@@ -24,9 +24,9 @@ public interface Visitor {
 	public void visit(ArrayRefNode arrayRefNode);
 	public void visit(StringNode stringNode);
 	public void visit(ParenNode parenNode);
+	public void visit(NotNode n);
 	public void visit(DeclNode declNode);
 	public void visit(ProgramNode programNode);
-	public void visit(NotNode notNode);
 	public void visit(VarDeclsNode varDeclsNode);
 	public void visit(IntTypeNode intTypeNode);
 	public void visit(FloatTypeNode floatTypeNode);

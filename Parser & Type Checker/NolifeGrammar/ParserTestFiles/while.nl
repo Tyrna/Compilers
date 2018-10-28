@@ -5,7 +5,7 @@ VAR a,b : ARRAY [1..10] OF INTEGER;
 
 BEGIN
   i := 2;
-  WHILE (i < 11) DO
+  WHILE (i < 1) DO
      BEGIN
        a[i] := a[i-1] + 1;
        i := i + 1

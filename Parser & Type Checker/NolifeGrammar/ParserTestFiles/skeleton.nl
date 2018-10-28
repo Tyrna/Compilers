@@ -1,8 +1,13 @@
-{ Pseudo-code for the swap routine }
-
 PROGRAM swapper;
 
 VAR x:INTEGER;
+
+FUNCTION B(t:INTEGER) : INTEGER;
+VAR y : INTEGER;
+
+BEGIN
+	y := x + t
+END
 
 BEGIN
   READ(x);

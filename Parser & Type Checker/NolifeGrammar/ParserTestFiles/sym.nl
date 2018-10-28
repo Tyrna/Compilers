@@ -1,5 +1,3 @@
-
-
 PROGRAM foo;
   VAR a:INTEGER;
 

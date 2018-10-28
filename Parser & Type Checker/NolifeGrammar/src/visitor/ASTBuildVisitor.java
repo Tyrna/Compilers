@@ -264,12 +264,9 @@ public class ASTBuildVisitor implements Visitor {
 	
 	@Override
 	public void visit(WhileNode whileNode) {
-		src += "\n" + prefix + "WHILE ";
+		src += "\n" + prefix + "WHILEDO";
 		addPrefix();
 		whileNode.getChild(0).accept(this);
-		delPrefix();
-		src += "\n" + prefix + "DO";
-		addPrefix();
 		whileNode.getChild(1).accept(this);
 		delPrefix();
 	}
@@ -368,13 +365,13 @@ public class ASTBuildVisitor implements Visitor {
 	@Override
 	public void visit(ExprListNode exprListNode) {
 		//Go through all expressions in the list of statements
-		//src += "\n" + prefix + "EXPRLIST";
-		//addPrefix();
+		src += "\n" + prefix + "EXPRLIST";
+		addPrefix();
 		exprListNode.getChild(0).accept(this);
 		for (int i = 1; i < exprListNode.getChildren().size(); i++) 
 			exprListNode.getChild(i).accept(this);
 		
-		//delPrefix();
+		delPrefix();
 	}
 	
 	@Override
@@ -433,10 +430,11 @@ public class ASTBuildVisitor implements Visitor {
 	public void visit(CallNode callNode) {
 		//Go through all expressions in the list of statements
 		src += "\n" + prefix + "CALL " + callNode.getLabel();
-		if (callNode.getChild(0) != null)
+		if (callNode.getChild(0) != null) {
 			addPrefix();
 			callNode.getChild(0).accept(this);
 			delPrefix();
+		}
 	}
 
 	@Override
