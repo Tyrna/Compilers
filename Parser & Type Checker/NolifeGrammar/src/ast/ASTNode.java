@@ -8,6 +8,8 @@ import visitor.Visitor;
 public abstract class ASTNode {
 	protected List<ASTNode> children = new ArrayList<ASTNode>();
 	protected String label;
+	protected int expectedType;
+	protec
 	
 	public abstract void accept(Visitor v);
 	
