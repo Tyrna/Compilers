@@ -1,9 +1,19 @@
 package visitor;
 
+import java.util.HashMap;
+
 import ast.*;
 
 
 public class MemoryMapVisitor implements Visitor {
+	
+	private final int INTEGER = 0;
+	private final int FLOAT = 1;
+	private final int CHAR = 2;
+	protected static HashMap<String, Integer> symTable = new HashMap<String, Integer>();
+	private int realType;
+	private int expectedType;
+	private int offset = 0;
 	
 
 	public MemoryMapVisitor() {
@@ -140,6 +150,10 @@ public class MemoryMapVisitor implements Visitor {
 		programNode.getLabel();
 		for (ASTNode node : programNode.getChildren())
 			node.accept(this);
+		
+		//Print memmap
+		for (String var : symTable.keySet())
+			System.out.printf("Variable: %s, Offset: %d\n", var, symTable.get(var));
 	}
 
 	@Override
@@ -150,16 +164,19 @@ public class MemoryMapVisitor implements Visitor {
 
 	@Override
 	public void visit(IntTypeNode intTypeNode) {
+		realType = INTEGER;
 		intTypeNode.getChild(0).accept(this);
 	}
 
 	@Override
 	public void visit(FloatTypeNode floatTypeNode) {
+		realType = FLOAT;
 		floatTypeNode.getChild(0).accept(this);
 	}
 	
 	@Override
 	public void visit(CharTypeNode charTypeNode) {
+		realType = CHAR;
 		charTypeNode.getChild(0).accept(this);
 	}
 
@@ -292,6 +309,7 @@ public class MemoryMapVisitor implements Visitor {
 
 	@Override
 	public void visit(IdDeclNode idDeclNode) {
+		symTable.put(idDeclNode.getLabel(), offsetCalc());
 		idDeclNode.getLabel();
 	}
 	
@@ -304,13 +322,19 @@ public class MemoryMapVisitor implements Visitor {
 
 	@Override
 	public void visit(IdDefNode idDefNode) {
-		idDefNode.getLabel();
+		idDefNode.setOffset(symTable.get(idDefNode.getLabel()));
+		System.out.printf("Variable %s, is on offset %d\n", idDefNode.getLabel(), idDefNode.getOffset());
 	}
 	
 	@Override
 	public void visit(ArrayDefNode arrayDefNode) {
 		arrayDefNode.getLabel();
 		arrayDefNode.getChild(0).accept(this);
+	}
+	
+	private int offsetCalc() {
+		offset -= 4;
+		return offset;
 	}
 
 }

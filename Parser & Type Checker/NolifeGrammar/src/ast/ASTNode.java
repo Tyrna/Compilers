@@ -9,7 +9,7 @@ public abstract class ASTNode {
 	protected List<ASTNode> children = new ArrayList<ASTNode>();
 	protected String label;
 	protected int expectedType;
-	protec
+	protected int offset;
 	
 	public abstract void accept(Visitor v);
 	
@@ -33,5 +33,21 @@ public abstract class ASTNode {
 	
 	public String getLabel() {
 		return label;
+	}
+	
+	public void setOffset(int o) {
+		offset = o;
+	}
+	
+	public int getOffset() {
+		return offset;
+	}
+	
+	public void setType(int t) {
+		expectedType = t;
+	}
+	
+	public int getType() {
+		return expectedType;
 	}
 }

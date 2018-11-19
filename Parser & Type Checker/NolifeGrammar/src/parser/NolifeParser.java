@@ -11,12 +11,13 @@ public class NolifeParser implements NolifeParserConstants {
             NolifeParser parser;
             java.io.InputStream input;
 
-            if (args.length < 1) {
-                System.out.println("Usage: java -jar nlc.jar <input file>");
-                return;
-            }
+            /*if (args.length < 1) {
+	      	System.out.println("Usage: java -jar nlc.jar <input file>");
+	      	return;
+	    }*/
 
-            String filename = new String(args[args.length - 1]);
+            //String filename = new String(args[args.length - 1]);
+            String filename = new String("test.txt");
             try {
                 input = new java.io.FileInputStream(filename);
             } catch (java.io.FileNotFoundException e) {
@@ -30,12 +31,15 @@ public class NolifeParser implements NolifeParserConstants {
               ASTNode node = parser.program();
               //SourceVisitor v = new SourceVisitor();
               ASTBuildVisitor v = new ASTBuildVisitor();
+              MemoryMapVisitor m = new MemoryMapVisitor();
               node.accept(v);
               System.out.println("\u005cn------------ Program is:\u005cn\u005cn"+v.getSrc());
-              TypeChecker u = new TypeChecker();
-              System.out.println("\u005cn\u005cn---------- Type checking... \u005cn");
-              node.accept(u);
+              //TypeChecker u = new TypeChecker();
+              //System.out.println("\n\n---------- Type checking... \n");
+              //node.accept(u);
               //System.out.println("---------- Done ----------");
+              System.out.println("\u005cn------------ Memory map is:\u005cn\u005cn");
+              node.accept(m);
             } catch (ParseException e) {
               System.err.println("Syntax Error: "+e.getMessage());
             }
@@ -1080,16 +1084,6 @@ public class NolifeParser implements NolifeParserConstants {
     finally { jj_save(1, xla); }
   }
 
-  static private boolean jj_3R_11() {
-    if (jj_scan_token(O_LBRACKET)) return true;
-    return false;
-  }
-
-  static private boolean jj_3_1() {
-    if (jj_3R_9()) return true;
-    return false;
-  }
-
   static private boolean jj_3R_9() {
     if (jj_3R_10()) return true;
     if (jj_scan_token(O_ASSIGN)) return true;
@@ -1106,6 +1100,16 @@ public class NolifeParser implements NolifeParserConstants {
 
   static private boolean jj_3_2() {
     if (jj_scan_token(O_ELSE)) return true;
+    return false;
+  }
+
+  static private boolean jj_3R_11() {
+    if (jj_scan_token(O_LBRACKET)) return true;
+    return false;
+  }
+
+  static private boolean jj_3_1() {
+    if (jj_3R_9()) return true;
     return false;
   }
 

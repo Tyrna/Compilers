@@ -19,12 +19,13 @@ public class NolifeParser {
 	    NolifeParser parser;
 	    java.io.InputStream input;
 
-	    if (args.length < 1) {
+	    /*if (args.length < 1) {
 	      	System.out.println("Usage: java -jar nlc.jar <input file>");
 	      	return;
-	    }
+	    }*/
 	    
-	    String filename = new String(args[args.length - 1]);
+	    //String filename = new String(args[args.length - 1]);
+	    String filename = new String("test.txt");
 	    try {
 	      	input = new java.io.FileInputStream(filename);
 	    } catch (java.io.FileNotFoundException e) {
@@ -38,12 +39,15 @@ public class NolifeParser {
 	      ASTNode node = parser.program();
 	      //SourceVisitor v = new SourceVisitor();
 	      ASTBuildVisitor v = new ASTBuildVisitor();
+	      MemoryMapVisitor m = new MemoryMapVisitor();
 	      node.accept(v);
 	      System.out.println("\n------------ Program is:\n\n"+v.getSrc());
-	      TypeChecker u = new TypeChecker();
-	      System.out.println("\n\n---------- Type checking... \n");
-	      node.accept(u);
+	      //TypeChecker u = new TypeChecker();
+	      //System.out.println("\n\n---------- Type checking... \n");
+	      //node.accept(u);
 	      //System.out.println("---------- Done ----------");
+	      System.out.println("\n------------ Memory map is:\n\n");
+	      node.accept(m);
 	    } catch (ParseException e) {
 	      System.err.println("Syntax Error: "+e.getMessage());
 	    }
