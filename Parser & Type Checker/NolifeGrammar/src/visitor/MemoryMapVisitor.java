@@ -1,19 +1,24 @@
 package visitor;
 
 import java.util.HashMap;
+import java.util.Stack;
 
 import ast.*;
-
+import javafx.scene.Node;
 
 public class MemoryMapVisitor implements Visitor {
 	
 	private final int INTEGER = 0;
 	private final int FLOAT = 1;
 	private final int CHAR = 2;
-	protected static HashMap<String, Integer> symTable = new HashMap<String, Integer>();
+	protected Stack<HashMap<String, ASTNode>> symTableStack = new Stack<HashMap<String, ASTNode>>();
+	protected HashMap<String, ASTNode> symTable;
+	protected HashMap<String, Integer> constTable = new HashMap<String, Integer>();
 	private int realType;
-	private int expectedType;
 	private int offset = 0;
+	private int constOffset = 0;
+	private int tempNum = 0;
+	private boolean params = false;
 	
 
 	public MemoryMapVisitor() {
@@ -21,256 +26,304 @@ public class MemoryMapVisitor implements Visitor {
 	}
 	
 	@Override
-	public void visit(SymNode n) {
+	public Object visit(SymNode n) {
 		
+	return null; }
+	
+	@Override
+	public Object visit(IntNode n) {
+		tempNum = Integer.parseInt(n.getLabel());
+		return null; 
 	}
 	
 	@Override
-	public void visit(IntNode n) {
-
+	public Object visit(FloatNode n) {
+		n.setOffset(constOffset);
+		constOffset -= 4;
+		constTable.put(n.getLabel(), constOffset);
+		System.out.printf("Constant declared : %s\n", n.getLabel());
+		return null; 
 	}
 	
 	@Override
-	public void visit(FloatNode n) {
-
-	}
+	public Object visit(CharNode n) {
+		tempNum = n.getLabel().charAt(1);
+	return null; }
 	
 	@Override
-	public void visit(CharNode n) {
-
-	}
-	
-	@Override
-	public void visit(AddNode n) {
+	public Object visit(AddNode n) {
 		n.getLeft().accept(this);
 		n.getRight().accept(this);
-	}
-
-	@Override
-	public void visit(SubNode n) {
-		n.getLeft().accept(this);
-		n.getRight().accept(this);
-	}
-
-	@Override
-	public void visit(ModNode n) {
-		n.getLeft().accept(this);
-		n.getRight().accept(this);
-	}
+	return null; }
 
 	@Override
-	public void visit(MulNode n) {
+	public Object visit(SubNode n) {
 		n.getLeft().accept(this);
 		n.getRight().accept(this);
-	}
-	
-	@Override
-	public void visit(LessThanNode n) {
-		n.getLeft().accept(this);
-		n.getRight().accept(this);
-	}
+	return null; }
 
 	@Override
-	public void visit(LessEqualNode n) {
+	public Object visit(ModNode n) {
 		n.getLeft().accept(this);
 		n.getRight().accept(this);
-	}
-	
+	return null; }
+
 	@Override
-	public void visit(GreaterThanNode n) {
+	public Object visit(MulNode n) {
 		n.getLeft().accept(this);
 		n.getRight().accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(GreaterEqualNode n) {
+	public Object visit(LessThanNode n) {
 		n.getLeft().accept(this);
 		n.getRight().accept(this);
-	}
-	
+	return null; }
+
 	@Override
-	public void visit(NotEqualNode n) {
+	public Object visit(LessEqualNode n) {
 		n.getLeft().accept(this);
 		n.getRight().accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(EqualNode n) {
+	public Object visit(GreaterThanNode n) {
 		n.getLeft().accept(this);
 		n.getRight().accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(AndNode n) {
+	public Object visit(GreaterEqualNode n) {
 		n.getLeft().accept(this);
 		n.getRight().accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(OrNode n) {
+	public Object visit(NotEqualNode n) {
 		n.getLeft().accept(this);
 		n.getRight().accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(IdRefNode n) {
-		n.getLabel();
-	}
+	public Object visit(EqualNode n) {
+		n.getLeft().accept(this);
+		n.getRight().accept(this);
+	return null; }
 	
 	@Override
-	public void visit(ArrayRefNode arrayRefNode) {
-		arrayRefNode.getLabel();
+	public Object visit(AndNode n) {
+		n.getLeft().accept(this);
+		n.getRight().accept(this);
+	return null; }
+	
+	@Override
+	public Object visit(OrNode n) {
+		n.getLeft().accept(this);
+		n.getRight().accept(this);
+	return null; }
+	
+	@Override
+	public Object visit(IdRefNode n) {
+		setScope(n);
+		ASTNode idNode = getNode(n.getLabel());
+		//IdDeclNode x;
+		//if (node.getClass().getSimpleName().compareTo("IdDeclNode") == 0)
+			//IdDeclNode idNode = (IdDeclNode)node;
+		//else
+			//ArrayDeclNode idNode = (ArrayDeclNode)node;
+		n.setOffset(idNode.getOffset());
+		n.setType(idNode.getType());
+		System.out.printf("Reference at %s scope: %s %s, is on offset %d\n",
+				n.getScope() == true ? "Local" : "Global",
+				idNode.getParam() ? "Parameter" : "Variable",
+				n.getLabel(), n.getOffset());
+	return null; }
+	
+	@Override
+	public Object visit(ArrayRefNode arrayRefNode) {
 		arrayRefNode.getChild(0).accept(this);
+		
+		setScope(arrayRefNode);
+		ArrayDeclNode declNode = (ArrayDeclNode)getNode(arrayRefNode.getLabel());
+		arrayRefNode.setOffset(declNode.getEndOffset() + ((tempNum - declNode.getStartDim()) * 4));
+		arrayRefNode.setType(declNode.getType());
+		arrayRefNode.setEndOffset(declNode.getEndOffset());
+		arrayRefNode.setDims(declNode.getStartDim(), declNode.getMaxDim());
+		System.out.printf("Array Reference at %s scope: %s %s, is on offset %d\n",
+				arrayRefNode.getScope() == true ? "Local" : "Global",
+				declNode.getParam() ? "Parameter" : "Variable",
+				arrayRefNode.getLabel(), arrayRefNode.getOffset());
+	return null; }
+	
+	@Override
+	public Object visit(StringNode stringNode) {
+		String sliced = stringNode.getLabel().substring(1, stringNode.getLabel().length()-1);
+		int length = sliced.length() + 1;
+		sliced = "\"" + sliced + "\""; 
+		
+		stringNode.setOffset(constOffset);
+		constOffset -= length;
+		constTable.put(sliced, constOffset);
+		System.out.printf("Constant declared : %s\n", sliced);
+	return null; }
+	
+	@Override
+	public Object visit(ParenNode parenNode) {
+		Integer i = (Integer) parenNode.getChild(0).accept(this);
+		return i; 
 	}
 	
 	@Override
-	public void visit(StringNode stringNode) {
-		stringNode.getLabel();
-	}
-	
-	@Override
-	public void visit(ParenNode parenNode) {
-		parenNode.getChild(0).accept(this);
-	}
-	
-	@Override
-	public void visit(NotNode notNode) {
+	public Object visit(NotNode notNode) {
 		notNode.getChild(0).accept(this);
-	}
+	return null; }
 
 	@Override
-	public void visit(DeclNode declNode) {
+	public Object visit(DeclNode declNode) {
 		declNode.getChild(0).accept(this);
-		for (int i = 1; i < declNode.getChildren().size(); i++) 
+		int i;
+		for (i = 1; i < declNode.getChildren().size(); i++) 
 			declNode.getChild(i).accept(this);
+		return i; 
 	}
 
 	@Override
-	public void visit(ProgramNode programNode) {
+	public Object visit(ProgramNode programNode) {
 		programNode.getLabel();
+		//Initialize global scope
+		symTable = new HashMap<String, ASTNode>();
+		symTableStack.push(symTable);
 		for (ASTNode node : programNode.getChildren())
 			node.accept(this);
 		
-		//Print memmap
-		for (String var : symTable.keySet())
-			System.out.printf("Variable: %s, Offset: %d\n", var, symTable.get(var));
-	}
+		//Testing the constTable
+		//for (String key : constTable.keySet())
+		//	System.out.printf("Key: %s, Value: %d\n", key, constTable.get(key));
+		
+		programNode.setTable(constTable);
+	return null; }
 
 	@Override
-	public void visit(VarDeclsNode varDeclsNode) {
+	public Object visit(VarDeclsNode varDeclsNode) {
 		for (ASTNode node : varDeclsNode.getChildren())
 			node.accept(this);
-	}
+	return null; }
 
 	@Override
-	public void visit(IntTypeNode intTypeNode) {
+	public Object visit(IntTypeNode intTypeNode) {
 		realType = INTEGER;
 		intTypeNode.getChild(0).accept(this);
-	}
+	return null; }
 
 	@Override
-	public void visit(FloatTypeNode floatTypeNode) {
+	public Object visit(FloatTypeNode floatTypeNode) {
 		realType = FLOAT;
 		floatTypeNode.getChild(0).accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(CharTypeNode charTypeNode) {
+	public Object visit(CharTypeNode charTypeNode) {
 		realType = CHAR;
 		charTypeNode.getChild(0).accept(this);
-	}
+	return null; }
 
 	@Override
-	public void visit(AssignNode assignNode) {
+	public Object visit(AssignNode assignNode) {
 		assignNode.getChild(0).accept(this);
 		assignNode.getChild(1).accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(IfStmtNode ifStmtNode) {
+	public Object visit(IfStmtNode ifStmtNode) {
 		ifStmtNode.getChild(0).accept(this); 
 		ifStmtNode.getChild(1).accept(this); 
 		if (ifStmtNode.getChild(2) != null)
 			ifStmtNode.getChild(2).accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(WhileNode whileNode) {
+	public Object visit(WhileNode whileNode) {
 		whileNode.getChild(0).accept(this);
 		whileNode.getChild(1).accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(ProcCallNode procCallNode) {
+	public Object visit(ProcCallNode procCallNode) {
 		procCallNode.getLabel();
 		if (procCallNode.getChild(0) != null) 
 			procCallNode.getChild(0).accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(WriteNode writeNode) {
+	public Object visit(WriteNode writeNode) {
 		writeNode.getChild(0).accept(this);
+		return null; 
 	}
 	
 	@Override
-	public void visit(ReadNode readNode) {
+	public Object visit(ReadNode readNode) {
 		readNode.getChild(0).accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(ReturnNode returnNode) {
+	public Object visit(ReturnNode returnNode) {
 		returnNode.getChild(0).accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(CaseStmtNode caseStmtNode) {
+	public Object visit(CaseStmtNode caseStmtNode) {
 		caseStmtNode.getChild(0).accept(this);
 		if (caseStmtNode.getChild(1) != null) 
 			caseStmtNode.getChild(1).accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(CaseListNode caseListNode) {
+	public Object visit(CaseListNode caseListNode) {
 		for (ASTNode childNode : caseListNode.getChildren())
 			childNode.accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(CaseNode caseNode) {
+	public Object visit(CaseNode caseNode) {
 		caseNode.getChild(0).accept(this);
 		caseNode.getChild(1).accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(CaseLabelsNode caseLabelsNode) {
+	public Object visit(CaseLabelsNode caseLabelsNode) {
 		caseLabelsNode.getChild(0).accept(this);
 		for (int i = 1; i < caseLabelsNode.getChildren().size(); i++)
 			caseLabelsNode.getChild(i).accept(this);
-	}
+	return null; }
 
 	@Override
-	public void visit(StmtListNode stmtListNode) {
+	public Object visit(StmtListNode stmtListNode) {
 		//Go through all expressions in the list of statements
 		for (ASTNode childNode : stmtListNode.getChildren()) 
 			childNode.accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(ExprListNode exprListNode) {
+	public Object visit(ExprListNode exprListNode) {
 		//Go through all expressions in the list of statements
 		exprListNode.getChild(0).accept(this);
 		for (int i = 1; i < exprListNode.getChildren().size(); i++) 
 			exprListNode.getChild(i).accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(SubProgDeclNode subProgDeclNode) {
+	public Object visit(SubProgDeclNode subProgDeclNode) {
 		for (ASTNode childNode : subProgDeclNode.getChildren())
 			childNode.accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(ProcNode procNode) {
+	public Object visit(ProcNode procNode) {
+		//New scope
+		symTable = new HashMap<String, ASTNode>();
+		symTableStack.push(symTable);
+		offset = 0;
+		
 		if (procNode.getChild(0) != null) 
 			procNode.getChild(0).accept(this);
 		
@@ -278,63 +331,131 @@ public class MemoryMapVisitor implements Visitor {
 			procNode.getChild(1).accept(this);
 	
 		procNode.getChild(2).accept(this);
+		symTableStack.pop();
+		symTable = symTableStack.peek();
+		return null; 
 	}
 
 	@Override
-	public void visit(FuncNode funcNode) {
-		if (funcNode.getChild(0) != null)
+	public Object visit(FuncNode funcNode) {
+		//New scope
+		symTable = new HashMap<String, ASTNode>();
+		symTableStack.push(symTable);
+		offset = 0;
+		
+		if (funcNode.getChild(0) != null) 
 			funcNode.getChild(0).accept(this);
 		
 		if (funcNode.getChild(1) != null)
 			funcNode.getChild(1).accept(this);
-
+	
 		funcNode.getChild(2).accept(this);
+		symTableStack.pop();
+		symTable = symTableStack.peek();
+		return null;
 	}
 	
 	@Override
-	public void visit(ParamNode paramNode) {
+	public Object visit(ParamNode paramNode) {
 		//Go through all expressions in the list of statements
+		params = true;
 		paramNode.getChild(0).accept(this);
 		for (int i = 1; i < paramNode.getChildren().size(); i++)
 			paramNode.getChild(i).accept(this);
-	}
+		offset = 0;
+		params = false;
+	return null; }
 	
 	@Override
-	public void visit(CallNode callNode) {
+	public Object visit(CallNode callNode) {
 		//Go through all expressions in the list of statements
 		callNode.getLabel();
 		if (callNode.getChild(0) != null) 
 			callNode.getChild(0).accept(this);
-	}
+	return null; }
 
 	@Override
-	public void visit(IdDeclNode idDeclNode) {
-		symTable.put(idDeclNode.getLabel(), offsetCalc());
-		idDeclNode.getLabel();
-	}
+	public Object visit(IdDeclNode idDeclNode) {
+		symTable.put(idDeclNode.getLabel(), idDeclNode);
+		idDeclNode.setOffset(offsetCalc(4));
+		idDeclNode.setParam(params);
+		idDeclNode.setType(realType);
+		setScope(idDeclNode);
+		System.out.printf("%s Declaration: %s, is on offset %d\n",
+				idDeclNode.getParam() ? "Parameter" : "Variable",
+				idDeclNode.getLabel(), idDeclNode.getOffset());
+	return null; }
 	
 	@Override
-	public void visit(ArrayDeclNode arrayDeclNode) {
+	public Object visit(ArrayDeclNode arrayDeclNode) {
 		arrayDeclNode.getLabel();
 		arrayDeclNode.getChild(0).accept(this);
+		int dim1 = tempNum;
 		arrayDeclNode.getChild(1).accept(this);
-	}
+		int dim2 = tempNum;
+		
+		arrayDeclNode.setDims(dim1, dim2);
+		arrayDeclNode.setOffset(offsetCalc(0));
+		arrayDeclNode.setParam(params);
+		arrayDeclNode.setType(realType);
+		arrayDeclNode.setEndOffset(offsetCalc((dim2-dim1) * 4) - 4);
+		
+		symTable.put(arrayDeclNode.getLabel(), arrayDeclNode);
+		arrayDeclNode.setOffset(arrayDeclNode.getOffset());
+		setScope(arrayDeclNode);
+		System.out.printf("%s Array Declaration: %s, is until offset %d\n\t\t\tFrom offset %d\n",
+				arrayDeclNode.getParam() ? "Parameter" : "Variable",
+				arrayDeclNode.getLabel(), arrayDeclNode.getOffset(), arrayDeclNode.getEndOffset());
+	return null; }
 
 	@Override
-	public void visit(IdDefNode idDefNode) {
-		idDefNode.setOffset(symTable.get(idDefNode.getLabel()));
-		System.out.printf("Variable %s, is on offset %d\n", idDefNode.getLabel(), idDefNode.getOffset());
-	}
+	public Object visit(IdDefNode idDefNode) {
+		setScope(idDefNode);
+		IdDeclNode idNode = (IdDeclNode)getNode(idDefNode.getLabel());
+		idDefNode.setOffset(idNode.getOffset());
+		idDefNode.setType(idNode.getType());
+		System.out.printf("Definition at %s scope: %s %s, is on offset %d\n",
+				idDefNode.getScope() == true ? "Local" : "Global",
+				idNode.getParam() ? "Parameter" : "Variable",
+				idDefNode.getLabel(), idDefNode.getOffset());
+	return null; }
 	
 	@Override
-	public void visit(ArrayDefNode arrayDefNode) {
-		arrayDefNode.getLabel();
+	public Object visit(ArrayDefNode arrayDefNode) {
 		arrayDefNode.getChild(0).accept(this);
-	}
+		
+		setScope(arrayDefNode);
+		ArrayDeclNode declNode = (ArrayDeclNode)getNode(arrayDefNode.getLabel());
+		arrayDefNode.setOffset(declNode.getEndOffset() + ((tempNum - declNode.getStartDim()) * 4));
+		arrayDefNode.setType(declNode.getType());
+		arrayDefNode.setEndOffset(declNode.getEndOffset());
+		arrayDefNode.setDims(declNode.getStartDim(), declNode.getMaxDim());
+		System.out.printf("Array Definition at %s scope: %s %s, is on offset %d\n",
+				arrayDefNode.getScope() == true ? "Local" : "Global",
+				declNode.getParam() ? "Parameter" : "Variable",
+				arrayDefNode.getLabel(), arrayDefNode.getOffset());
+	return null; }
 	
-	private int offsetCalc() {
-		offset -= 4;
+	private int offsetCalc(int i) {
+		offset -= i;
 		return offset;
 	}
+	
+	private ASTNode getNode(String label) {
+		ASTNode ret;
+		if ((ret = symTable.get(label)) != null)
+			return ret;
+		else if ((ret = symTableStack.get(0).get(label)) != null)
+			return ret;
+			
+		return null;
+	}
+	
+	private Object setScope(ASTNode node) {
+		if (symTable.get(node.getLabel()) != null)
+			node.setScope(true);
+		else
+			node.setScope(false);
+	return null; }
 
 }

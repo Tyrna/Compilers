@@ -32,6 +32,7 @@ public class NolifeParser implements NolifeParserConstants {
               //SourceVisitor v = new SourceVisitor();
               ASTBuildVisitor v = new ASTBuildVisitor();
               MemoryMapVisitor m = new MemoryMapVisitor();
+              CodeGeneratorVisitor c = new CodeGeneratorVisitor();
               node.accept(v);
               System.out.println("\u005cn------------ Program is:\u005cn\u005cn"+v.getSrc());
               //TypeChecker u = new TypeChecker();
@@ -40,6 +41,7 @@ public class NolifeParser implements NolifeParserConstants {
               //System.out.println("---------- Done ----------");
               System.out.println("\u005cn------------ Memory map is:\u005cn\u005cn");
               node.accept(m);
+              node.accept(c);
             } catch (ParseException e) {
               System.err.println("Syntax Error: "+e.getMessage());
             }

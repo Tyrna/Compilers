@@ -10,8 +10,10 @@ public abstract class ASTNode {
 	protected String label;
 	protected int expectedType;
 	protected int offset;
+	protected boolean scope;
+	protected boolean param;
 	
-	public abstract void accept(Visitor v);
+	public abstract Object accept(Visitor v);
 	
 	public ASTNode addChild(ASTNode c) {
 		children.add(c);
@@ -49,5 +51,21 @@ public abstract class ASTNode {
 	
 	public int getType() {
 		return expectedType;
+	}
+	
+	public void setScope(boolean s) {
+		scope = s;
+	}
+	
+	public boolean getScope() {
+		return scope;
+	}
+	
+	public void setParam(boolean p) {
+		param = p;
+	}
+	
+	public boolean getParam() {
+		return param;
 	}
 }

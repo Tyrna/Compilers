@@ -1,0 +1,19 @@
+PROGRAM test;
+
+VAR a,b,c : FLOAT;
+	e : ARRAY[1..3] OF INTEGER;
+	f : INTEGER;
+
+PROCEDURE b(l:INTEGER);
+
+  VAR x : FLOAT;
+
+  BEGIN
+  	e[2] := 2;
+  	x := 2.0;
+    WRITE('lmaoxD')
+  END;
+
+BEGIN
+  a := 1.0
+END

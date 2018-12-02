@@ -4,13 +4,23 @@ import visitor.Visitor;
 
 public class FuncNode extends ASTNode {
 	
+	protected int variables;
+	
 	public FuncNode() {
 		super();
 	}
 
 	@Override
-	public void accept(Visitor v) {
-		v.visit(this);
+	public Object accept(Visitor v) {
+		return v.visit(this);
+	}
+	
+	public void setVars(int i) {
+		variables = i;
+	}
+	
+	public int getVars() {
+		return variables;
 	}
 
 }

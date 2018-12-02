@@ -18,8 +18,8 @@ public class DeclNode extends ASTNode {
 	 * @see astv3.ASTNode#accept(visitor.Visitor)
 	 */
 	@Override
-	public void accept(Visitor v) {
-		v.visit(this);
+	public Object accept(Visitor v) {
+		return v.visit(this);
 	}
 
 }

@@ -21,7 +21,7 @@ public class TypeChecker implements Visitor {
 	
 	public TypeChecker() {}
 	
-	private void arithTypeCheck(BinaryNode n) {
+	private Object arithTypeCheck(BinaryNode n) {
 		n.getLeft().accept(this);
 		int leftType = exprType;
 		n.getRight().accept(this);
@@ -47,9 +47,9 @@ public class TypeChecker implements Visitor {
 					TypeUtils.typeCh(leftType), TypeUtils.typeCh(rightType));
 			exprType = ANYTYPE;
 		}		
-	}
+	return null; }
 	
-	private void compTypeCheck(BinaryNode n) {
+	private Object compTypeCheck(BinaryNode n) {
 		n.getChild(0).accept(this);
 		int leftType = exprType;
 		n.getChild(1).accept(this);
@@ -71,9 +71,9 @@ public class TypeChecker implements Visitor {
 					TypeUtils.typeCh(leftType), TypeUtils.typeCh(rightType));
 			exprType = ANYTYPE;
 		}		
-	}
+	return null; }
 	
-	private void logicTypeCheck(BinaryNode n) {
+	private Object logicTypeCheck(BinaryNode n) {
 		n.getLeft().accept(this);
 		int leftType = exprType;
 		n.getRight().accept(this);
@@ -96,94 +96,94 @@ public class TypeChecker implements Visitor {
 					TypeUtils.typeCh(leftType), TypeUtils.typeCh(rightType));
 			exprType = ANYTYPE;
 		}		
-	}
+	return null; }
 	
 	@Override
-	public void visit(SymNode n) {
+	public Object visit(SymNode n) {
 		//??
-	}
+	return null; }
 	
 	@Override
-	public void visit(IntNode n) {
+	public Object visit(IntNode n) {
 		exprType = INTEGER;
-	}
+	return null; }
 	
 	@Override
-	public void visit(FloatNode n) {
+	public Object visit(FloatNode n) {
 		exprType = FLOAT;
-	}
+	return null; }
 	
 	@Override
-	public void visit(CharNode n) {
+	public Object visit(CharNode n) {
 		exprType = CHAR;
-	}
+	return null; }
 
 	@Override
-	public void visit(AddNode n) {
+	public Object visit(AddNode n) {
 		arithTypeCheck(n);
-	}
+	return null; }
 
 	@Override
-	public void visit(SubNode n) {
+	public Object visit(SubNode n) {
 		arithTypeCheck(n);
-	}
+	return null; }
 
 	@Override
-	public void visit(ModNode n) {
+	public Object visit(ModNode n) {
 		arithTypeCheck(n);
 		
 		if (exprType != INTEGER && exprType != ANYTYPE) {
 			System.err.println("Cannot do MOD operations on non-integer types");
-		}
-	}
+		return null; }
+	return null; }
 
 	@Override
-	public void visit(MulNode n) {
+	public Object visit(MulNode n) {
 		arithTypeCheck(n);
-	}
+	return null; }
 	
 	@Override
-	public void visit(LessThanNode n) {
+	public Object visit(LessThanNode n) {
 		compTypeCheck(n);
-	}
+	return null; }
 	
 	@Override
-	public void visit(LessEqualNode n) {
+	public Object visit(LessEqualNode n) {
 		compTypeCheck(n);
-	}
+	return null; }
 	
 	@Override
-	public void visit(GreaterThanNode n) {
+	public Object visit(GreaterThanNode n) {
 		compTypeCheck(n);
-	}
+	return null; }
 	
 	@Override
-	public void visit(GreaterEqualNode n) {
+	public Object visit(GreaterEqualNode n) {
 		compTypeCheck(n);
-	}
+	return null; }
 	
 	@Override
-	public void visit(NotEqualNode n) {
+	public Object visit(NotEqualNode n) {
 		compTypeCheck(n);
-	}
+	return null; }
 	
 	@Override
-	public void visit(EqualNode n) {
+	public Object visit(EqualNode n) {
 		compTypeCheck(n);
-	}
+	return null; }
 	
 	@Override
-	public void visit(AndNode n) {
+	public Object visit(AndNode n) {
 		logicTypeCheck(n);
-	}
+	return null; }
 	
 	@Override
-	public void visit(OrNode n) {
+	public Object visit(OrNode n) {
 		logicTypeCheck(n);
-	}
+	return null; }
 
 	@Override
-	public void visit(IdRefNode n) {
+	public Object visit(IdRefNode n) {
 		TypeUtils.Symbol sym;
 		int symType;
 		
@@ -209,11 +209,11 @@ public class TypeChecker implements Visitor {
 		}
 		
 		TypeUtils.referencedSym(n.getLabel());
-	}
+	return null; }
 	
 	
 	@Override
-	public void visit(ArrayRefNode arrayRefNode) {
+	public Object visit(ArrayRefNode arrayRefNode) {
 		int arrSymType;
 		TypeUtils.Symbol arrSym;
 		
@@ -235,70 +235,70 @@ public class TypeChecker implements Visitor {
 		}
 		
 		TypeUtils.referencedSym(arrayRefNode.getLabel());
-	}
+	return null; }
 	
 	@Override
-	public void visit(StringNode stringNode) {
+	public Object visit(StringNode stringNode) {
 		//Nothing to do ~
-	}
+	return null; }
 
 	@Override
-	public void visit(ParenNode parenNode) {
+	public Object visit(ParenNode parenNode) {
 		parenNode.getChild(0).accept(this);
-	}
+	return null; }
 	
 
 	@Override
-	public void visit(NotNode notNode) {
+	public Object visit(NotNode notNode) {
 		notNode.getChild(0).accept(this);
 		
 		if (exprType != 0) {
 			System.err.printf("NOT Type error. NOT is only valid for INTEGERS but received %s instead\n", TypeUtils.typeCh(exprType));
 			exprType = ANYTYPE;
-		}
-	}
+		return null; }
+	return null; }
 
 	@Override
-	public void visit(DeclNode declNode) {
+	public Object visit(DeclNode declNode) {
 		for (ASTNode n : declNode.getChildren())
 			n.accept(this);
-	}
+	return null; }
 
 	@Override
-	public void visit(ProgramNode programNode) {
+	public Object visit(ProgramNode programNode) {
 		TypeUtils.newFrame();
 		for (ASTNode n : programNode.getChildren())
 			n.accept(this);
 		TypeUtils.checkRefSym();
 		TypeUtils.remFrame();
-	}
+	return null; }
 
 	@Override
-	public void visit(VarDeclsNode varDeclsNode) {
+	public Object visit(VarDeclsNode varDeclsNode) {
 		for (ASTNode n : varDeclsNode.getChildren())
 			n.accept(this);
-	}
+	return null; }
 
 	@Override
-	public void visit(IntTypeNode intTypeNode) {
+	public Object visit(IntTypeNode intTypeNode) {
 		declType = INTEGER;
 		intTypeNode.getChild(0).accept(this);
-	}
+	return null; }
 
 	@Override
-	public void visit(FloatTypeNode floatTypeNode) {
+	public Object visit(FloatTypeNode floatTypeNode) {
 		declType = FLOAT;
 		floatTypeNode.getChild(0).accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(CharTypeNode charTypeNode) {
+	public Object visit(CharTypeNode charTypeNode) {
 		declType = CHAR;
 		charTypeNode.getChild(0).accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(ArrayDeclNode arrayTypeNode) {
+	public Object visit(ArrayDeclNode arrayTypeNode) {
 		id = arrayTypeNode.getLabel();
 		if (TypeUtils.findInScope(id))
 			System.err.println("Variable already declared in current scope: " + id);
@@ -306,10 +306,10 @@ public class TypeChecker implements Visitor {
 			arrayTypeNode.getChild(0).accept(this);
 			TypeUtils.addArraySymbol(id, declType, arrayTypeNode.getChild(0).getLabel(), arrayTypeNode.getChild(1).getLabel(), exprType);
 		}
-	}
+	return null; }
 
 	@Override
-	public void visit(AssignNode assignNode) {
+	public Object visit(AssignNode assignNode) {
 		assignNode.getLHS().accept(this);
 		int lhsType = exprType;
 		assignNode.getRHS().accept(this);
@@ -331,37 +331,37 @@ public class TypeChecker implements Visitor {
 				}
 			}
 		}
-	}
+	return null; }
 	
 	@Override
-	public void visit(IfStmtNode ifStmtNode) {
+	public Object visit(IfStmtNode ifStmtNode) {
 		ifStmtNode.getChild(0).accept(this); 
 		ifStmtNode.getChild(1).accept(this); 
 		if (ifStmtNode.getChild(2) != null) 
 			ifStmtNode.getChild(2).accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(WhileNode whileNode) {
+	public Object visit(WhileNode whileNode) {
 		whileNode.getChild(0).accept(this);
 		whileNode.getChild(1).accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(ProcCallNode procCallNode) {
+	public Object visit(ProcCallNode procCallNode) {
 		TypeUtils.funcSymbol funcSymbol = (TypeUtils.funcSymbol) TypeUtils.symTableStack.get(0).get(procCallNode.getLabel());
 	
 			//Check if procedure was declared
 			if (funcSymbol == null) {
 				System.err.printf("Procedure '%s' was never declared\n", procCallNode.getLabel());
-				return;
+				return null;
 			}
 			
 			//Check that it is a procedure, not a function
 			if (funcSymbol.returns) {
 				System.err.printf("Cannot invoke '%s' with a Procedure Call as it is a Function\n", procCallNode.getLabel());
 				exprType = ANYTYPE;
-				return;
+				return null;
 			}
 			
 			//Check if there are no parameters
@@ -373,7 +373,7 @@ public class TypeChecker implements Visitor {
 				
 				exprType = funcSymbol.type;
 				TypeUtils.referencedSym(procCallNode.getLabel());
-				return;
+				return null;
 			}
 		
 		//procCallNode.getChild(0).accept(this);
@@ -405,64 +405,64 @@ public class TypeChecker implements Visitor {
 		
 		isItCall = false;
 		TypeUtils.referencedSym(procCallNode.getLabel());
-	}
+	return null; }
 	
 	@Override
-	public void visit(WriteNode writeNode) {	
+	public Object visit(WriteNode writeNode) {	
 		writeNode.getChild(0).accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(ReadNode readNode) {
+	public Object visit(ReadNode readNode) {
 		readNode.getChild(0).accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(ReturnNode returnNode) {
+	public Object visit(ReturnNode returnNode) {
 		returnNode.getChild(0).accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(CaseStmtNode caseStmtNode) {
+	public Object visit(CaseStmtNode caseStmtNode) {
 		caseStmtNode.getChild(0).accept(this);
 		
 		if (caseStmtNode.getChild(1) != null)
 			caseStmtNode.getChild(1).accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(CaseListNode caseListNode) {
+	public Object visit(CaseListNode caseListNode) {
 		for (ASTNode child : caseListNode.getChildren())
 			child.accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(CaseNode caseNode) {
+	public Object visit(CaseNode caseNode) {
 		caseNode.getChild(0).accept(this);
 		caseNode.getChild(1).accept(this);
 		
-	}
+	return null; }
 	
 	@Override
-	public void visit(CaseLabelsNode caseLabelsNode) {
+	public Object visit(CaseLabelsNode caseLabelsNode) {
 		for (ASTNode child : caseLabelsNode.getChildren())
 			child.accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(StmtListNode stmtListNode) {
+	public Object visit(StmtListNode stmtListNode) {
 		for (ASTNode n : stmtListNode.getChildren())
 			n.accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(ExprListNode exprListNode) {
+	public Object visit(ExprListNode exprListNode) {
 		for (ASTNode n : exprListNode.getChildren())
 			n.accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(SubProgDeclNode subProgDeclNode) {
+	public Object visit(SubProgDeclNode subProgDeclNode) {
 		for (ASTNode n : subProgDeclNode.getChildren()) {
 			switch(n.getClass().getSimpleName()) {
 				case "ProcNode" :
@@ -509,10 +509,10 @@ public class TypeChecker implements Visitor {
 			TypeUtils.checkRefSym();
 			TypeUtils.remFrame();
 		}
-	}
+	return null; }
 	
 	@Override
-	public void visit(ProcNode procNode) {
+	public Object visit(ProcNode procNode) {
 		//Parameters are done before this
 		if (procNode.getChild(0) != null) 
 			procNode.getChild(0).accept(this);
@@ -523,10 +523,10 @@ public class TypeChecker implements Visitor {
 	
 		//Compstmt
 		procNode.getChild(2).accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(FuncNode funcNode) {
+	public Object visit(FuncNode funcNode) {
 		//Parameters are done before this
 		if (funcNode.getChild(0) != null) 
 			funcNode.getChild(0).accept(this);	
@@ -538,30 +538,30 @@ public class TypeChecker implements Visitor {
 		//Compstmt
 		funcNode.getChild(2).accept(this);
 		
-	}
+	return null; }
 	
 	@Override
-	public void visit(ParamNode paramNode) {
+	public Object visit(ParamNode paramNode) {
 		for (ASTNode n : paramNode.getChildren()) 
 			n.accept(this);
-	}
+	return null; }
 	
 	@Override
-	public void visit(CallNode callNode) {
+	public Object visit(CallNode callNode) {
 		TypeUtils.funcSymbol funcSymbol = (TypeUtils.funcSymbol) TypeUtils.symTableStack.get(0).get(callNode.getLabel());
 		
 		//Check if function was declared
 		if (funcSymbol == null) {
 			System.err.printf("Function '%s' was never declared\n", callNode.getLabel());
 			exprType = ANYTYPE;
-			return;
+			return null;
 		}
 		
 		//Check it is a function, not a procedure
 		if (!(funcSymbol.returns)) {
 			System.err.printf("Cannot invoke '%s' with a Function Call as it is a Procedure\n", callNode.getLabel());
 			exprType = ANYTYPE;
-			return;
+			return null;
 		}
 		
 		//Check if there are no parameters
@@ -573,7 +573,7 @@ public class TypeChecker implements Visitor {
 			
 			exprType = funcSymbol.type;
 			TypeUtils.referencedSym(callNode.getLabel());
-			return;
+			return null;
 		}
 	
 		//callNode.getChild(0).accept(this);
@@ -582,7 +582,7 @@ public class TypeChecker implements Visitor {
 		if (callNode.getChild(0).getChildren().size() != funcSymbol.parameters.size()) {
 			System.err.printf("Incorrect amount of parameters\n\t On call '%s', we are given %d parameter(s), when we are expecting %d\n",
 					funcSymbol.name, callNode.getChild(0).getChildren().size(), funcSymbol.parameters.size());
-		}
+		return null; }
 		//Then check for type of parameters
 		else {
 			int i = 0;
@@ -606,19 +606,19 @@ public class TypeChecker implements Visitor {
 		isItCall = false;
 		exprType = funcSymbol.type;
 		TypeUtils.referencedSym(callNode.getLabel());
-	}
+	return null; }
 
 	@Override
-	public void visit(IdDeclNode idDeclNode) {
+	public Object visit(IdDeclNode idDeclNode) {
 		id = idDeclNode.getLabel();
 		if (TypeUtils.findInScope(id))
 			System.err.println("Variable already declared in current scope: " + id);
 		else
 			TypeUtils.addSymbol(id, declType);
-	}
+	return null; }
 
 	@Override
-	public void visit(IdDefNode n) {
+	public Object visit(IdDefNode n) {
 		TypeUtils.Symbol sym;
 		int symType;
 		
@@ -636,10 +636,10 @@ public class TypeChecker implements Visitor {
 			System.err.println("Undeclared variable: "+n.getLabel());
 			exprType = ANYTYPE;
 		}
-	}
+	return null; }
 	
 	@Override
-	public void visit(ArrayDefNode arrayDefNode) {
+	public Object visit(ArrayDefNode arrayDefNode) {
 		TypeUtils.Symbol arrSym;
 		int arrSymType;
 		
@@ -660,6 +660,6 @@ public class TypeChecker implements Visitor {
 			exprType = ANYTYPE;
 		}
 		
-	}
+	return null; }
 	
 }

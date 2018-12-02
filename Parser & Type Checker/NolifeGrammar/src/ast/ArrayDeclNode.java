@@ -4,13 +4,38 @@ import visitor.Visitor;
 
 public class ArrayDeclNode extends ASTNode {
 	
+	protected int endOffset;
+	protected int start;
+	protected int end;
+	
 	public ArrayDeclNode() {
 		super();
 	}
 
 	@Override
-	public void accept(Visitor v) {
-		v.visit(this);
+	public Object accept(Visitor v) {
+		return v.visit(this);
+	}
+	
+	public void setEndOffset(int i) {
+		endOffset = i;
+	}
+	
+	public int getEndOffset() {
+		return endOffset;
+	}
+	
+	public void setDims(int s, int e) {
+		start = s;
+		end = e;
+	}
+	
+	public int getMaxDim() {
+		return end;
+	}
+	
+	public int getStartDim() {
+		return start;
 	}
 
 }

@@ -40,6 +40,7 @@ public class NolifeParser {
 	      //SourceVisitor v = new SourceVisitor();
 	      ASTBuildVisitor v = new ASTBuildVisitor();
 	      MemoryMapVisitor m = new MemoryMapVisitor();
+	      CodeGeneratorVisitor c = new CodeGeneratorVisitor();
 	      node.accept(v);
 	      System.out.println("\n------------ Program is:\n\n"+v.getSrc());
 	      //TypeChecker u = new TypeChecker();
@@ -48,6 +49,7 @@ public class NolifeParser {
 	      //System.out.println("---------- Done ----------");
 	      System.out.println("\n------------ Memory map is:\n\n");
 	      node.accept(m);
+	      node.accept(c);
 	    } catch (ParseException e) {
 	      System.err.println("Syntax Error: "+e.getMessage());
 	    }
