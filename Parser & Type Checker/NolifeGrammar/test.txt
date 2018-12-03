@@ -6,9 +6,12 @@ nonrecursive, as well as parameter passing.
 *********************************************************}
 
 PROGRAM subprog;
- VAR f,a,b : FLOAT;
+	VAR i, j : INTEGER;
 
-BEGIN
-	f := 3.3;
-	WRITE(f + 2.5)
+ BEGIN
+ 	i := 1;
+ 	j := 5;
+ 	READ(i);
+ 	WRITE(i);
+ 	WRITE(j)
 END

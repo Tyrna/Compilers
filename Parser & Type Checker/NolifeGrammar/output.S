@@ -2,16 +2,17 @@
 	.section .rodata
 
 .io_format:
-
 	.string "%d\12"
 	.string "%f\12"
-	.string "%s\12"
 	.string "%c\12"
+	.string "%s\12"
+
+.io_format_in:
+	.string "%d"
+	.string "%f"
+	.string "%c"
 
 _constant:
-
-	.float 3.3
-	.float 2.5
 
 .text
 	.globl main;
@@ -21,28 +22,31 @@ main:
 	push %ebp
 	mov %ebp, %esp
 #Declaring variables. Amount of declarations * 4
-	sub %esp, 12
+	sub %esp, 8
 #---- Assignment expression...
-	mov %edi, [ offset flat:_constant + 0 ]
+	mov %edi, 1
 #Assigned variable...
-	fld dword ptr [%edi]
-	fstp dword ptr [%ebp-4]
+	mov dword ptr [%ebp-4], %edi
+#---- Assignment expression...
+	mov %edi, 5
+#Assigned variable...
+	mov dword ptr [%ebp-8], %edi
+# Reading...
+	mov %eax, %ebp
+	sub %eax, 4
+	push %eax
+	push [ offset flat:.io_format_in + 0 ]
+	call scanf
+	add %esp, 8
 # Printing...
-#Adding expression...
-	mov %edi, dword ptr [%ebp-4]
-	mov %esi, [ offset flat:_constant + 4 ]
-#Float addition...
-	fld dword ptr [%ebp-4]
-	fadd dword ptr [%esi]
-	sub %esp, 4
-	fstp dword ptr [%esp]
-	pop %edi
-	sub %esp, 4
-	push %edi
-	fld dword ptr [%esp]
-	fstp qword ptr [%esp]
-	push [ offset flat:.io_format + 4 ]
+	push dword ptr [%ebp-4]
+	push [ offset flat:.io_format + 0 ]
 	call printf
-	add %esp, 12
+	add %esp, 8
+# Printing...
+	push dword ptr [%ebp-8]
+	push [ offset flat:.io_format + 0 ]
+	call printf
+	add %esp, 8
 	leave
 	ret

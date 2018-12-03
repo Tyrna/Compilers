@@ -16,6 +16,7 @@ public class CodeGeneratorVisitor implements Visitor {
 	private int type = 0;
 	private String toAssign = "";
 	protected int Label = 0;
+	protected int caseLabel = 0;
 
 	public CodeGeneratorVisitor() {
 		super();
@@ -29,7 +30,14 @@ public class CodeGeneratorVisitor implements Visitor {
 	@Override
 	public Object visit(IntNode n) {
 		String reg = getFreeRegister();
-		src += "\tmov %" + reg + ", " + n.getLabel() + "\n";
+		if (n.getType() == FLOAT) {
+			src += "\tpush " + n.getLabel() + "\n";
+			src += "\tfild dword ptr [%esp]\n";
+			src += "\tfstp dword ptr [%esp]\n";
+			src += "\tpop %" + reg + "\n";
+		}
+		else
+			src += "\tmov %" + reg + ", " + n.getLabel() + "\n";
 		return reg; 
 	}
 	
@@ -37,7 +45,7 @@ public class CodeGeneratorVisitor implements Visitor {
 	public Object visit(FloatNode n) {
 		String reg = getFreeRegister();
 		int off = n.getOffset() * -1;
-		src += "\tmov %" + reg + ", [ offset flat:_constant + " + off + " ]\n";
+		src += "\tmov %" + reg + ", [ _constant + " + off + " ]\n";
 		type = 1;
 		return reg; 
 	}
@@ -62,15 +70,21 @@ public class CodeGeneratorVisitor implements Visitor {
 			src += "#Float addition...\n";
 			if (n.getLeft().getClass().getSimpleName().compareTo("IdRefNode") == 0)
 				src += "\tfld dword ptr [%ebp-" + (n.getLeft().getOffset() * -1) + "]\n";
-			else
-				src += "\tfld dword ptr [%" + leftReg + "]\n";
+			else {
+				src += "\tpush %" + leftReg + "\n";
+				src += "\tfld dword ptr [%esp]\n";
+				src += "\tadd %esp, 4\n";
+			}
 			if (n.getRight().getClass().getSimpleName().compareTo("IdRefNode") == 0)
 				src += "\tfadd dword ptr [%ebp-" + (n.getRight().getOffset() * -1) + "]\n";
-			else
-				src += "\tfadd dword ptr [%" + rightReg + "]\n";
+			else {
+				src += "\tpush %" + rightReg + "\n";
+				src += "\tfadd dword ptr [%esp]\n";
+				src += "\tadd %esp, 4\n";
+			}
 			src += "\tsub %esp, 4\n";
 			src += "\tfstp dword ptr [%esp]\n";
-			src += "\tpop %edi\n";
+			src += "\tpop %" + leftReg + "\n";
 		}
 		freeRegister(rightReg);
 		return leftReg; 
@@ -78,11 +92,32 @@ public class CodeGeneratorVisitor implements Visitor {
 
 	@Override
 	public Object visit(SubNode n) {
-		src += "#Substracting expression...\n";
+		src += "#Substraction expression...\n";
 		String leftReg = (String)n.getLeft().accept(this);
 		String rightReg = (String)n.getRight().accept(this);
 		
-		src += "\tsub %" + leftReg +", %" + rightReg + "\n";
+		if (type == 0)
+			src += "\tsub %" + leftReg +", %" + rightReg + "\n";
+		else {
+			src += "#Float substraction...\n";
+			if (n.getLeft().getClass().getSimpleName().compareTo("IdRefNode") == 0)
+				src += "\tfld dword ptr [%ebp-" + (n.getLeft().getOffset() * -1) + "]\n";
+			else {
+				src += "\tpush %" + leftReg + "\n";
+				src += "\tfld dword ptr [%esp]\n";
+				src += "\tadd %esp, 4\n";
+			}
+			if (n.getRight().getClass().getSimpleName().compareTo("IdRefNode") == 0)
+				src += "\tfsub dword ptr [%ebp-" + (n.getRight().getOffset() * -1) + "]\n";
+			else {
+				src += "\tpush %" + rightReg + "\n";
+				src += "\tfsub dword ptr [%esp]\n";
+				src += "\tadd %esp, 4\n";
+			}
+			src += "\tsub %esp, 4\n";
+			src += "\tfstp dword ptr [%esp]\n";
+			src += "\tpop %" + leftReg + "\n";
+		}
 		freeRegister(rightReg);
 		return leftReg; 
 	}
@@ -102,11 +137,32 @@ public class CodeGeneratorVisitor implements Visitor {
 
 	@Override
 	public Object visit(MulNode n) {
-		src += "#Multiplicataion expressions...\n";
+		src += "#Multiplication expression...\n";
 		String leftReg = (String)n.getLeft().accept(this);
 		String rightReg = (String)n.getRight().accept(this);
 		
-		src += "\timul %" + leftReg +", %" + rightReg + "\n";
+		if (type == 0)
+			src += "\timul %" + leftReg +", %" + rightReg + "\n";
+		else {
+			src += "#Float Multiplication...\n";
+			if (n.getLeft().getClass().getSimpleName().compareTo("IdRefNode") == 0)
+				src += "\tfld dword ptr [%ebp-" + (n.getLeft().getOffset() * -1) + "]\n";
+			else {
+				src += "\tpush %" + leftReg + "\n";
+				src += "\tfld dword ptr [%esp]\n";
+				src += "\tadd %esp, 4\n";
+			}
+			if (n.getRight().getClass().getSimpleName().compareTo("IdRefNode") == 0)
+				src += "\tfmul dword ptr [%ebp-" + (n.getRight().getOffset() * -1) + "]\n";
+			else {
+				src += "\tpush %" + rightReg + "\n";
+				src += "\tfmul dword ptr [%esp]\n";
+				src += "\tadd %esp, 4\n";
+			}
+			src += "\tsub %esp, 4\n";
+			src += "\tfstp dword ptr [%esp]\n";
+			src += "\tpop %" + leftReg + "\n";
+		}
 		freeRegister(rightReg);
 		return leftReg; 
 	}
@@ -117,8 +173,22 @@ public class CodeGeneratorVisitor implements Visitor {
 		String leftReg = (String)n.getLeft().accept(this);
 		String rightReg = (String)n.getRight().accept(this);
 		
-		src += "\tcmp %" + leftReg + ", %" + rightReg + "\n";
-		src += "\tjge .L" + ++Label + "\n";
+		//If float comparison 
+		if (n.getType() == FLOAT) {
+			src += "\tpush %" + rightReg + "\n";
+			src += "\tfld dword ptr [ %esp ]\n";
+			src += "\tpush %" + leftReg + "\n";
+			src += "\tfld dword ptr [ %esp ]\n";
+			src += "\tadd %esp, 8\n";
+			src += "\tfcomip %st(0), %st(1)\n";
+			src += "\tfstp %st(0)\n";
+			src += "\tjae .L" + ++Label + "\n";
+		}
+		else {
+			src += "\tcmp %" + leftReg + ", %" + rightReg + "\n";
+			src += "\tjge .L" + ++Label + "\n";
+		}
+				
 		int i = Label;
 		src += "\tmov %" + leftReg + ", 1\n";
 		src += "\tjmp .L" + ++Label + "\n";
@@ -128,6 +198,7 @@ public class CodeGeneratorVisitor implements Visitor {
 		
 		freeRegister(leftReg);
 		freeRegister(rightReg);
+		type = INTEGER;
 		return leftReg; 
 	}
 
@@ -137,8 +208,22 @@ public class CodeGeneratorVisitor implements Visitor {
 		String leftReg = (String)n.getLeft().accept(this);
 		String rightReg = (String)n.getRight().accept(this);
 		
-		src += "\tcmp %" + leftReg + ", %" + rightReg + "\n";
-		src += "\tjg .L" + ++Label + "\n";
+		//If float comparison 
+		if (n.getType() == FLOAT) {
+			src += "\tpush %" + rightReg + "\n";
+			src += "\tfld dword ptr [ %esp ]\n";
+			src += "\tpush %" + leftReg + "\n";
+			src += "\tfld dword ptr [ %esp ]\n";
+			src += "\tadd %esp, 8\n";
+			src += "\tfcomip %st(0), %st(1)\n";
+			src += "\tfstp %st(0)\n";
+			src += "\tja .L" + ++Label + "\n";
+		}
+		else {
+			src += "\tcmp %" + leftReg + ", %" + rightReg + "\n";
+			src += "\tjg .L" + ++Label + "\n";
+		}
+				
 		int i = Label;
 		src += "\tmov %" + leftReg + ", 1\n";
 		src += "\tjmp .L" + ++Label + "\n";
@@ -146,6 +231,7 @@ public class CodeGeneratorVisitor implements Visitor {
 		src += "\tmov %" + leftReg + ", 0\n";
 		src += ".L" + Label + ":\n";
 		
+		type = INTEGER;
 		freeRegister(leftReg);
 		freeRegister(rightReg);
 		return leftReg; 
@@ -157,8 +243,22 @@ public class CodeGeneratorVisitor implements Visitor {
 		String leftReg = (String)n.getLeft().accept(this);
 		String rightReg = (String)n.getRight().accept(this);
 			
-		src += "\tcmp %" + leftReg + ", %" + rightReg + "\n";
-		src += "\tjle .L" + ++Label + "\n";
+		//If float comparison 
+		if (n.getType() == FLOAT) {
+			src += "\tpush %" + rightReg + "\n";
+			src += "\tfld dword ptr [ %esp ]\n";
+			src += "\tpush %" + leftReg + "\n";
+			src += "\tfld dword ptr [ %esp ]\n";
+			src += "\tadd %esp, 8\n";
+			src += "\tfcomip %st(0), %st(1)\n";
+			src += "\tfstp %st(0)\n";
+			src += "\tjbe .L" + ++Label + "\n";
+		}
+		else {
+			src += "\tcmp %" + leftReg + ", %" + rightReg + "\n";
+			src += "\tjle .L" + ++Label + "\n";
+		}
+				
 		int i = Label;
 		src += "\tmov %" + leftReg + ", 1\n";
 		src += "\tjmp .L" + ++Label + "\n";
@@ -168,6 +268,7 @@ public class CodeGeneratorVisitor implements Visitor {
 		
 		freeRegister(leftReg);
 		freeRegister(rightReg);
+		type = INTEGER;
 		return leftReg; 
 	}
 	
@@ -177,8 +278,22 @@ public class CodeGeneratorVisitor implements Visitor {
 		String leftReg = (String)n.getLeft().accept(this);
 		String rightReg = (String)n.getRight().accept(this);
 		
-		src += "\tcmp %" + leftReg + ", %" + rightReg + "\n";
-		src += "\tjl .L" + ++Label + "\n";
+		//If float comparison 
+		if (n.getType() == FLOAT) {
+			src += "\tpush %" + rightReg + "\n";
+			src += "\tfld dword ptr [ %esp ]\n";
+			src += "\tpush %" + leftReg + "\n";
+			src += "\tfld dword ptr [ %esp ]\n";
+			src += "\tadd %esp, 8\n";
+			src += "\tfcomip %st(0), %st(1)\n";
+			src += "\tfstp %st(0)\n";
+			src += "\tjb .L" + ++Label + "\n";
+		}
+		else {
+			src += "\tcmp %" + leftReg + ", %" + rightReg + "\n";
+			src += "\tjl .L" + ++Label + "\n";
+		}
+		
 		int i = Label;
 		src += "\tmov %" + leftReg + ", 1\n";
 		src += "\tjmp .L" + ++Label + "\n";
@@ -188,6 +303,7 @@ public class CodeGeneratorVisitor implements Visitor {
 		
 		freeRegister(leftReg);
 		freeRegister(rightReg);
+		type = INTEGER;
 		return leftReg; 
 	}
 	
@@ -197,7 +313,19 @@ public class CodeGeneratorVisitor implements Visitor {
 		String leftReg = (String)n.getLeft().accept(this);
 		String rightReg = (String)n.getRight().accept(this);
 		
-		src += "\tcmp %" + leftReg + ", %" + rightReg + "\n";
+		//If float comparison 
+		if (n.getType() == FLOAT) {
+			src += "\tpush %" + rightReg + "\n";
+			src += "\tfld dword ptr [ %esp ]\n";
+			src += "\tpush %" + leftReg + "\n";
+			src += "\tfld dword ptr [ %esp ]\n";
+			src += "\tadd %esp, 8\n";
+			src += "\tfcomip %st(0), %st(1)\n";
+			src += "\tfstp %st(0)\n";
+		}
+		else 
+			src += "\tcmp %" + leftReg + ", %" + rightReg + "\n";
+		
 		src += "\tje .L" + ++Label + "\n";
 		int i = Label;
 		src += "\tmov %" + leftReg + ", 1\n";
@@ -208,6 +336,7 @@ public class CodeGeneratorVisitor implements Visitor {
 		
 		freeRegister(leftReg);
 		freeRegister(rightReg);
+		type = INTEGER;
 		return leftReg; 
 	}
 	
@@ -217,7 +346,19 @@ public class CodeGeneratorVisitor implements Visitor {
 		String leftReg = (String)n.getLeft().accept(this);
 		String rightReg = (String)n.getRight().accept(this);
 		
-		src += "\tcmp %" + leftReg + ", %" + rightReg + "\n";
+		//If float comparison 
+		if (n.getType() == FLOAT) {
+			src += "\tpush %" + rightReg + "\n";
+			src += "\tfld dword ptr [ %esp ]\n";
+			src += "\tpush %" + leftReg + "\n";
+			src += "\tfld dword ptr [ %esp ]\n";
+			src += "\tadd %esp, 8\n";
+			src += "\tfcomip %st(0), %st(1)\n";
+			src += "\tfstp %st(0)\n";
+		}
+		else 
+			src += "\tcmp %" + leftReg + ", %" + rightReg + "\n";
+					
 		src += "\tjne .L" + ++Label + "\n";
 		int i = Label;
 		src += "\tmov %" + leftReg + ", 1\n";
@@ -228,6 +369,7 @@ public class CodeGeneratorVisitor implements Visitor {
 		
 		freeRegister(leftReg);
 		freeRegister(rightReg);
+		type = INTEGER;
 		return leftReg; 
 	}
 	
@@ -263,7 +405,19 @@ public class CodeGeneratorVisitor implements Visitor {
 	@Override
 	public Object visit(ArrayRefNode arrayRefNode) {
 		String reg = getFreeRegister();
-		src += "\tmov %" + reg + ", dword ptr [%ebp" + arrayRefNode.getOffset() + "]\n";
+		if (arrayRefNode.getChild(0).getClass().getSimpleName().compareTo("IdRefNode") == 0) {
+			String toReg = (String)arrayRefNode.getChild(0).accept(this);
+			int offset = arrayRefNode.getEndOffset();
+			freeRegister(toReg);
+			src += "\tmov %" + reg + ", %" + toReg + "\n";
+			src += "\tsub %" + reg + ", " + arrayRefNode.getStartDim() + "\n";
+			src += "\timul %" + reg + ", 4\n";
+			src += "\tadd %" + reg + ", " + offset + "\n";
+			src += "\tadd %" + reg +", %ebp\n";
+		}
+		else {
+			src += "\tmov %" + reg + ", dword ptr [%ebp" + arrayRefNode.getOffset() + "]\n";
+		}
 		return reg; 
 	}
 	
@@ -320,14 +474,17 @@ public class CodeGeneratorVisitor implements Visitor {
 		
 		programNode.getLabel();
 		//Print initial code
-		src += "\t.intel_syntax\n\t.section .rodata\n\n.io_format:\n\n";
+		src += "\t.intel_syntax\n\t.section .rodata\n\n.io_format:\n";
 		src += "\t.string \"%d\\12\"\n";
 		src += "\t.string \"%f\\12\"\n";
-		src += "\t.string \"%s\\12\"\n";
 		src += "\t.string \"%c\\12\"\n";
+		src += "\t.string \"%s\\12\"\n";
+		
+		src += "\n.io_format_in:\n";
+		src += "\t.string \"%d\"\n\t.string \"%f\"\n\t.string \"%c\"\n";
 		
 		//Print constants
-		src += "\n_constant:\n\n";
+		src += "\n_constant:\n";
 		
 		Map<String, Integer> sortedMap = sortMap(programNode.getTable());
 		
@@ -341,20 +498,23 @@ public class CodeGeneratorVisitor implements Visitor {
 			}
 		}
 		
-		if (programNode.getChild(1).getClass().getSimpleName().contains("SubProgDeclNode")) {
+		src += "\n";
+		
+		if (programNode.getChildren().size() > 1 && programNode.getChild(1).getClass().getSimpleName().contains("SubProgDeclNode")) {
 			programNode.getChild(1).accept(this);
-			src += "\n.text\n\t.globl main;\n\t.type main, @function\n";
+			src += ".text\n\t.globl main;\n\t.type main, @function\n";
 			src += "\nmain:\n";
 			src += "\tpush %ebp\n";
 			src += "\tmov %ebp, %esp\n";
 			programNode.getChild(0).accept(this);
 		} else {
-			src += "\n.text\n\t.globl main;\n\t.type main, @function\n";
+			src += ".text\n\t.globl main;\n\t.type main, @function\n";
 			src += "\nmain:\n";
 			src += "\tpush %ebp\n";
 			src += "\tmov %ebp, %esp\n";
 			programNode.getChild(0).accept(this);
-			programNode.getChild(1).accept(this);
+			if (programNode.getChildren().size() > 1)
+				programNode.getChild(1).accept(this);
 		}
 		
 		//Initialize global scope
@@ -406,12 +566,13 @@ public class CodeGeneratorVisitor implements Visitor {
 		src += "#Assigned variable...\n";
 		assignNode.getChild(0).accept(this);
 		freeRegister("edi");
-	return null; }
+		return null; 
+	}
 	
 	@Override
 	public Object visit(IfStmtNode ifStmtNode) {
-		src += "#If Statement...\n";
 		String reg = (String)ifStmtNode.getChild(0).accept(this);
+		src += "#If Statement...\n";
 		
 		src += "\tcmp %" + reg + ", 0\n";
 		src += "\tje .L" + ++Label + "\n";
@@ -433,16 +594,26 @@ public class CodeGeneratorVisitor implements Visitor {
 	
 	@Override
 	public Object visit(WhileNode whileNode) {
-		whileNode.getChild(0).accept(this);
+		src += "#While Statement...\n";
+		src += ".L" + ++Label + ":\n";
+		int toGo = Label;
+		String reg = (String)whileNode.getChild(0).accept(this);
+		src += "\tcmp %" + reg + ", 0\n";
+		src += "\tje .L" + ++Label + "\n";
+		int l = Label;
+		
 		whileNode.getChild(1).accept(this);
-	return null; }
+		src += "\tjmp .L" + toGo + "\n";
+		src += ".L" + l + ":\n";
+		return null; 
+	}
 	
 	@Override
 	public Object visit(ProcCallNode procCallNode) {
 		//Go through all expressions in the list of statements
 		String name = procCallNode.getLabel();
-		if (procCallNode.getChild(0) != null) 
-			procCallNode.getChild(0).accept(this);
+		//if (procCallNode.getChild(0) != null) 
+		//	procCallNode.getChild(0).accept(this);
 		
 		src += "\tcall " + name + "\n";
 		return null; 
@@ -451,8 +622,9 @@ public class CodeGeneratorVisitor implements Visitor {
 	@Override
 	public Object visit(WriteNode writeNode) {
 		src += "# Printing...\n";
+		String ref = "";
 		int off = writeNode.getChild(0).getOffset() * -1;
-		int offset = 4;
+		int offset = 8;
 		
 		//If float...
 		switch (writeNode.getChild(0).getClass().getSimpleName()) {
@@ -472,7 +644,8 @@ public class CodeGeneratorVisitor implements Visitor {
 		
 			case "FloatNode": {
 				src += "\tsub %esp, 4\n";
-				src += "\tpush %edi";
+				src += "\tmov %edi, [ _constant + " + off + " ]\n";
+				src += "\tpush %edi\n";
 				src += "\tfld dword ptr [%esp]\n";
 				src += "\tfstp qword ptr [%esp]\n";
 				src += "\tpush [ offset flat:.io_format + 4 ]\n";
@@ -487,28 +660,24 @@ public class CodeGeneratorVisitor implements Visitor {
 			}
 			
 			case "ArrayRefNode":
-				/*String dimString = writeNode.getChild(0).getChild(0).getLabel();
-				int dim;
-				if (dimString.length() > 1)
-					dim = dimString.charAt(1);
-				else
-					dim = Integer.parseInt(dimString);
-				
-				ArrayRefNode arrNode = (ArrayRefNode) writeNode.getChild(0);
-				off = ((dim - arrNode.getStartDim()) * 4 ) + arrNode.getEndOffset();*/
+				if (writeNode.getChild(0).getChild(0).getClass().getSimpleName().compareTo("IdRefNode") == 0) {
+					ref = (String)writeNode.getChild(0).accept(this);
+					freeRegister(ref);
+				}
+					
 				off = writeNode.getChild(0).getOffset() * -1;
 			case "IdRefNode": {
 				switch (writeNode.getChild(0).getType()) {
 					//Int
 					case 0: {
-						src += "\tpush dword ptr [%ebp-" + off + "]\n";
+						src += "\tpush dword ptr [%" + (ref != "" ? ref: "ebp-"+off) + "]\n";
 						src += "\tpush [ offset flat:.io_format + 0 ]\n";
 						break;
 					}
 					//Float
 					case 1: {
 						src += "\tsub %esp, 4\n";
-						src += "\tfld dword ptr [%ebp-" + off + "]\n";
+						src += "\tfld dword ptr [%" + (ref != "" ? ref: "ebp-"+off) + "]\n";
 						src += "\tfstp qword ptr [%esp]\n";
 						src += "\tpush [ offset flat:.io_format + 4 ]\n";
 						offset = 12;
@@ -516,8 +685,7 @@ public class CodeGeneratorVisitor implements Visitor {
 					}
 					//Char
 					case 2: {
-						int asciiChar = (int) writeNode.getChild(0).getChild(0).getLabel().charAt(1);
-						src += "\tpush dword ptr [%ebp-" + asciiChar + "]\n";
+						src += "\tpush dword ptr [%" + (ref != "" ? ref: "ebp-"+off) + "]\n";
 						src += "\tpush [ offset flat:.io_format + 8 ]\n";
 						break;
 					}
@@ -551,8 +719,34 @@ public class CodeGeneratorVisitor implements Visitor {
 	
 	@Override
 	public Object visit(ReadNode readNode) {
-		readNode.getChild(0).accept(this);
-	return null; }
+		src += "# Reading...\n";
+		int off = readNode.getChild(0).getOffset() * -1;
+		int offset = 4;
+		
+		
+		src += "\tmov %eax, %ebp\n";
+		src += "\tsub %eax, " + off + "\n";
+		src += "\tpush %eax\n";
+		
+		//If float...
+		switch (readNode.getType()) {
+			case INTEGER: 
+				src += "\tpush [ offset flat:.io_format_in + 0 ]\n";
+				break;
+				
+			case FLOAT: 
+				src += "\tpush [ offset flat:.io_format_in + 3 ]\n";
+				break;
+			
+			case CHAR: 
+				src += "\tpush [ offset flat:.io_format_in + 6 ]\n";
+				break;
+		}
+		
+		src += "\tcall scanf\n"; 
+		src += "\tadd %esp, 8\n";
+		return null;
+	}
 	
 	@Override
 	public Object visit(ReturnNode returnNode) {
@@ -564,29 +758,50 @@ public class CodeGeneratorVisitor implements Visitor {
 	
 	@Override
 	public Object visit(CaseStmtNode caseStmtNode) {
-		caseStmtNode.getChild(0).accept(this);
+		String reg = (String)caseStmtNode.getChild(0).accept(this);
+		int fakeLabel = Label;
+		
+		src += "#Case Statement...\n";
+		for (ASTNode casesNode : caseStmtNode.getChild(1).getChildren()) {
+			fakeLabel += 1;
+			for (ASTNode childNode : casesNode.getChild(0).getChildren()) {
+				src += "\tcmp %" + reg + ", " + childNode.getLabel() + "\n";
+				src += "\tje .L" + fakeLabel + "\n";
+			}
+		}
+		src += "\tjmp .L" + ++fakeLabel + "\n";
+		caseLabel = fakeLabel;
+				
 		if (caseStmtNode.getChild(1) != null) 
 			caseStmtNode.getChild(1).accept(this);
-	return null; }
+		
+		src += ".L" + caseLabel + ":\n";
+		return null; 
+	}
 	
 	@Override
 	public Object visit(CaseListNode caseListNode) {
 		for (ASTNode childNode : caseListNode.getChildren())
 			childNode.accept(this);
-	return null; }
+		return null; 
+	}
 	
 	@Override
 	public Object visit(CaseNode caseNode) {
 		caseNode.getChild(0).accept(this);
 		caseNode.getChild(1).accept(this);
-	return null; }
+		src += "\tjmp .L" + caseLabel + "\n";
+		return null; 
+	}
 	
 	@Override
 	public Object visit(CaseLabelsNode caseLabelsNode) {
+		src += ".L" + ++Label + ":\n";
 		caseLabelsNode.getChild(0).accept(this);
 		for (int i = 1; i < caseLabelsNode.getChildren().size(); i++)
 			caseLabelsNode.getChild(i).accept(this);
-	return null; }
+		return null; 
+	}
 
 	@Override
 	public Object visit(StmtListNode stmtListNode) {
@@ -651,17 +866,18 @@ public class CodeGeneratorVisitor implements Visitor {
 	@Override
 	public Object visit(ParamNode paramNode) {
 		//Go through all expressions in the list of statements
-		paramNode.getChild(0).accept(this);
-		for (int i = 1; i < paramNode.getChildren().size(); i++)
-			paramNode.getChild(i).accept(this);
-	return null; }
+		//paramNode.getChild(0).accept(this);
+		//for (int i = 1; i < paramNode.getChildren().size(); i++)
+			//paramNode.getChild(i).accept(this);
+		return null; 
+	}
 	
 	@Override
 	public Object visit(CallNode callNode) {
 		//Go through all expressions in the list of statements
 		String name = callNode.getLabel();
-		if (callNode.getChild(0) != null) 
-			callNode.getChild(0).accept(this);
+		//if (callNode.getChild(0) != null) 
+		//	callNode.getChild(0).accept(this);
 		
 		src += "\tcall " + name + "\n";
 		String reg = getFreeRegister();
@@ -687,7 +903,9 @@ public class CodeGeneratorVisitor implements Visitor {
 		int offset = idDefNode.getOffset() * -1;
 		
 		if (idDefNode.getType() == 1) {
-			src += "\tfld dword ptr [%edi]\n";
+			src += "\tpush %edi\n";
+			src += "\tfld dword ptr [%esp]\n";
+			src += "\tadd %esp, 4\n";
 			src += "\tfstp dword ptr [%ebp-" + offset + "]\n";
 		}
 		else
@@ -697,8 +915,19 @@ public class CodeGeneratorVisitor implements Visitor {
 	
 	@Override
 	public Object visit(ArrayDefNode arrayDefNode) {
-		int offset = arrayDefNode.getOffset() * -1;
-		src += "\tmov dword ptr [%ebp-" + offset + "], %edi\n";
+		if (arrayDefNode.getChild(0).getClass().getSimpleName().compareTo("IdRefNode") == 0) {
+			int offset = arrayDefNode.getEndOffset();
+			src += "\tmov %eax, %edi\n";
+			src += "\tsub %eax, " + arrayDefNode.getStartDim() + "\n";
+			src += "\timul %eax, 4\n";
+			src += "\tadd %eax, " + offset + "\n";
+			src += "\tadd %eax, %ebp\n";
+			src += "\tmov dword ptr [%eax], %edi\n"; 
+		}
+		else {
+			int offset = arrayDefNode.getOffset() * -1;
+			src += "\tmov dword ptr [%ebp-" + offset + "], %edi\n";
+		}
 		return null; 
 	}
 	

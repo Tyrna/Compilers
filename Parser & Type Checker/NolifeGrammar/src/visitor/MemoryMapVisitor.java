@@ -33,14 +33,21 @@ public class MemoryMapVisitor implements Visitor {
 	@Override
 	public Object visit(IntNode n) {
 		tempNum = Integer.parseInt(n.getLabel());
+		n.setType(realType);
+		setType(INTEGER);
 		return null; 
 	}
 	
 	@Override
 	public Object visit(FloatNode n) {
-		n.setOffset(constOffset);
-		constOffset -= 4;
-		constTable.put(n.getLabel(), constOffset);
+		setType(FLOAT);
+		if (!constTable.containsKey(n.getLabel())) {
+			n.setOffset(constOffset);
+			constTable.put(n.getLabel(), constOffset);
+			constOffset -= 4;
+		} else {
+			n.setOffset(constTable.get(n.getLabel()));
+		}
 		System.out.printf("Constant declared : %s\n", n.getLabel());
 		return null; 
 	}
@@ -48,7 +55,8 @@ public class MemoryMapVisitor implements Visitor {
 	@Override
 	public Object visit(CharNode n) {
 		tempNum = n.getLabel().charAt(1);
-	return null; }
+		return null; 
+	}
 	
 	@Override
 	public Object visit(AddNode n) {
@@ -78,37 +86,61 @@ public class MemoryMapVisitor implements Visitor {
 	public Object visit(LessThanNode n) {
 		n.getLeft().accept(this);
 		n.getRight().accept(this);
-	return null; }
+		
+		n.setType(realType);
+		realType = 0;
+		return null; 
+	}
 
 	@Override
 	public Object visit(LessEqualNode n) {
 		n.getLeft().accept(this);
 		n.getRight().accept(this);
-	return null; }
+		
+		n.setType(realType);
+		realType = 0;
+		return null; 
+	}
 	
 	@Override
 	public Object visit(GreaterThanNode n) {
 		n.getLeft().accept(this);
 		n.getRight().accept(this);
-	return null; }
+		
+		n.setType(realType);
+		realType = 0;
+		return null; 
+	}
 	
 	@Override
 	public Object visit(GreaterEqualNode n) {
 		n.getLeft().accept(this);
 		n.getRight().accept(this);
-	return null; }
+		
+		n.setType(realType);
+		realType = 0;
+		return null; 
+	}
 	
 	@Override
 	public Object visit(NotEqualNode n) {
 		n.getLeft().accept(this);
 		n.getRight().accept(this);
-	return null; }
+		
+		n.setType(realType);
+		realType = 0;
+		return null; 
+	}
 	
 	@Override
 	public Object visit(EqualNode n) {
 		n.getLeft().accept(this);
 		n.getRight().accept(this);
-	return null; }
+		
+		n.setType(realType);
+		realType = 0;
+		return null; 
+	}
 	
 	@Override
 	public Object visit(AndNode n) {
@@ -133,11 +165,13 @@ public class MemoryMapVisitor implements Visitor {
 			//ArrayDeclNode idNode = (ArrayDeclNode)node;
 		n.setOffset(idNode.getOffset());
 		n.setType(idNode.getType());
+		setType(n.getType());
 		System.out.printf("Reference at %s scope: %s %s, is on offset %d\n",
 				n.getScope() == true ? "Local" : "Global",
 				idNode.getParam() ? "Parameter" : "Variable",
 				n.getLabel(), n.getOffset());
-	return null; }
+		return null; 
+	}
 	
 	@Override
 	public Object visit(ArrayRefNode arrayRefNode) {
@@ -231,7 +265,11 @@ public class MemoryMapVisitor implements Visitor {
 	public Object visit(AssignNode assignNode) {
 		assignNode.getChild(0).accept(this);
 		assignNode.getChild(1).accept(this);
-	return null; }
+		
+		assignNode.setType(realType);
+		realType = 0;
+		return null; 
+	}
 	
 	@Override
 	public Object visit(IfStmtNode ifStmtNode) {
@@ -263,7 +301,9 @@ public class MemoryMapVisitor implements Visitor {
 	@Override
 	public Object visit(ReadNode readNode) {
 		readNode.getChild(0).accept(this);
-	return null; }
+		readNode.setType(readNode.getChild(0).getType());
+		return null; 
+	}
 	
 	@Override
 	public Object visit(ReturnNode returnNode) {
@@ -281,13 +321,15 @@ public class MemoryMapVisitor implements Visitor {
 	public Object visit(CaseListNode caseListNode) {
 		for (ASTNode childNode : caseListNode.getChildren())
 			childNode.accept(this);
-	return null; }
+		return null; 
+	}
 	
 	@Override
 	public Object visit(CaseNode caseNode) {
 		caseNode.getChild(0).accept(this);
 		caseNode.getChild(1).accept(this);
-	return null; }
+		return null; 
+	}
 	
 	@Override
 	public Object visit(CaseLabelsNode caseLabelsNode) {
@@ -414,11 +456,13 @@ public class MemoryMapVisitor implements Visitor {
 		IdDeclNode idNode = (IdDeclNode)getNode(idDefNode.getLabel());
 		idDefNode.setOffset(idNode.getOffset());
 		idDefNode.setType(idNode.getType());
+		setType(idDefNode.getType());
 		System.out.printf("Definition at %s scope: %s %s, is on offset %d\n",
 				idDefNode.getScope() == true ? "Local" : "Global",
 				idNode.getParam() ? "Parameter" : "Variable",
 				idDefNode.getLabel(), idDefNode.getOffset());
-	return null; }
+		return null; 
+	}
 	
 	@Override
 	public Object visit(ArrayDefNode arrayDefNode) {
@@ -434,7 +478,8 @@ public class MemoryMapVisitor implements Visitor {
 				arrayDefNode.getScope() == true ? "Local" : "Global",
 				declNode.getParam() ? "Parameter" : "Variable",
 				arrayDefNode.getLabel(), arrayDefNode.getOffset());
-	return null; }
+		return null; 
+	}
 	
 	private int offsetCalc(int i) {
 		offset -= i;
@@ -456,6 +501,14 @@ public class MemoryMapVisitor implements Visitor {
 			node.setScope(true);
 		else
 			node.setScope(false);
-	return null; }
+		return null; 
+	}
+	
+	private void setType(int t) {
+		if (realType == FLOAT)
+			return;
+		else
+			realType = t;
+	}
 
 }
