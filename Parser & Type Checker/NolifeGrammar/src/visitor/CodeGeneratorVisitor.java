@@ -750,6 +750,7 @@ public class CodeGeneratorVisitor implements Visitor {
 	
 	@Override
 	public Object visit(ReturnNode returnNode) {
+		src += "# Returning...\n";
 		String reg = (String)returnNode.getChild(0).accept(this);
 		src += "\tmov %eax, %" + reg + "\n";
 		freeRegister(reg);
