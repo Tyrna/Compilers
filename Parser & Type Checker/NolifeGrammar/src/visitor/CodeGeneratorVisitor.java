@@ -17,6 +17,7 @@ public class CodeGeneratorVisitor implements Visitor {
 	private String toAssign = "";
 	protected int Label = 0;
 	protected int caseLabel = 0;
+	private boolean isCall = false;
 
 	public CodeGeneratorVisitor() {
 		super();
@@ -397,7 +398,38 @@ public class CodeGeneratorVisitor implements Visitor {
 	@Override
 	public Object visit(IdRefNode n) {
 		String reg = getFreeRegister();
-		src += "\tmov %" + reg + ", dword ptr [%ebp" + n.getOffset() + "]\n";
+		
+		if (!n.getScope()) {
+			src += "\tmov %eax, offset flat:.__main_ebp\n";
+			src += "\tmov %eax, dword ptr [%eax]\n";
+			if (isCall) {
+				src += "\tmov %" + reg + ", %eax\n";
+				if (n.getParam())
+					src += "\tadd %" + reg + ", " + ((n.getOffset() * -1) + 4) + "\n";
+				else
+					src += "\tsub %" + reg + ", " + (n.getOffset() * -1) + "\n";
+			}
+			else
+				src += "\tmov %" + reg + ", dword ptr [%eax" + n.getOffset() + "]\n";
+		} 
+		else {
+			if (isCall) {
+				src += "\tmov %" + reg + ", %ebp\n";
+				if (n.getParam())
+					src += "\tadd %" + reg + ", " + ((n.getOffset() * -1) + 4) + "\n";
+				else
+					src += "\tsub %" + reg + ", " + (n.getOffset() * -1) + "\n";
+			}
+			else {
+				int off = n.getOffset();
+				if (n.getParam()) 
+					off = (off * -1) + 4;
+				src += "\tmov %" + reg + ", dword ptr [%ebp" + (off > 0 ? "+" + off : off) + "]\n";
+				if (n.getParam())
+					src += "\tmov %" + reg + ", [%" + reg + "]\n"; 
+			}
+		}
+		
 		type = n.getType();
 		return reg; 
 	}
@@ -405,18 +437,44 @@ public class CodeGeneratorVisitor implements Visitor {
 	@Override
 	public Object visit(ArrayRefNode arrayRefNode) {
 		String reg = getFreeRegister();
+		String scope = "ebp";
+		if (!arrayRefNode.getScope()) {
+			src += "\tmov %eax, offset flat:.__main_ebp\n";
+			src += "\tmov %eax, dword ptr [%eax]\n";
+			scope = "eax";
+		} 
 		if (arrayRefNode.getChild(0).getClass().getSimpleName().compareTo("IdRefNode") == 0) {
 			String toReg = (String)arrayRefNode.getChild(0).accept(this);
 			int offset = arrayRefNode.getEndOffset();
+			String newReg = getFreeRegister();
 			freeRegister(toReg);
 			src += "\tmov %" + reg + ", %" + toReg + "\n";
 			src += "\tsub %" + reg + ", " + arrayRefNode.getStartDim() + "\n";
 			src += "\timul %" + reg + ", 4\n";
 			src += "\tadd %" + reg + ", " + offset + "\n";
-			src += "\tadd %" + reg +", %ebp\n";
+			src += "\tadd %" + reg +", %" + scope + "\n";
+			freeRegister(newReg);
+			if (isCall) {
+				src += "\tmov %" + newReg + ", %" + reg + "\n";
+				src += "\tmov %" + reg + ", %" + scope + "\n";
+				if (arrayRefNode.getParam())
+					src += "\tadd %" + reg + ", %" + newReg + "\n";
+				else
+					src += "\tsub %" + reg + ", %" + newReg + "\n";
+			}
+			else
+				src += "\tmov %" + reg + ", dword ptr [%" + scope + arrayRefNode.getOffset() + "]\n";
 		}
 		else {
-			src += "\tmov %" + reg + ", dword ptr [%ebp" + arrayRefNode.getOffset() + "]\n";
+			if (isCall) {
+				src += "\tmov %" + reg + ", %" + scope + "\n";
+				if (arrayRefNode.getParam())
+					src += "\tadd %" + reg + ", " + ((arrayRefNode.getOffset() * -1) + 4) + "\n";
+				else
+					src += "\tsub %" + reg + ", " + (arrayRefNode.getOffset() * -1) + "\n";
+			}
+			else
+				src += "\tmov %" + reg + ", dword ptr [%" + scope + arrayRefNode.getOffset() + "]\n";
 		}
 		return reg; 
 	}
@@ -506,12 +564,16 @@ public class CodeGeneratorVisitor implements Visitor {
 			src += "\nmain:\n";
 			src += "\tpush %ebp\n";
 			src += "\tmov %ebp, %esp\n";
+			src += "\tmov %eax, offset flat:.__main_ebp\n";
+			src += "\tmov dword ptr [%eax], %ebp\n";
 			programNode.getChild(0).accept(this);
 		} else {
 			src += ".text\n\t.globl main;\n\t.type main, @function\n";
 			src += "\nmain:\n";
 			src += "\tpush %ebp\n";
 			src += "\tmov %ebp, %esp\n";
+			src += "\tmov %eax, offset flat:.__main_ebp\n";
+			src += "\tmov dword ptr [%eax], %ebp\n";
 			programNode.getChild(0).accept(this);
 			if (programNode.getChildren().size() > 1)
 				programNode.getChild(1).accept(this);
@@ -521,7 +583,8 @@ public class CodeGeneratorVisitor implements Visitor {
 		for (int i = 2; i < programNode.getChildren().size(); i++)
 			programNode.getChild(i).accept(this);
 		
-		src += "\tleave\n\tret";
+		src += "\tleave\n\tret\n\n";
+		src += ".comm .__main_ebp,4,4\n";
 		
 		//Testing the constTable
 		//for (String key : constTable.keySet())
@@ -667,17 +730,41 @@ public class CodeGeneratorVisitor implements Visitor {
 					
 				off = writeNode.getChild(0).getOffset() * -1;
 			case "IdRefNode": {
+				String scope = "ebp-";
+				if (writeNode.getChild(0).getParam()) {
+					scope = "ebp+";
+					off = off + 4;
+				}
+				if (!writeNode.getChild(0).getScope()) {
+					scope = "eax-";
+					src += "\tmov %eax, offset flat:.__main_ebp\n";
+					src += "\tmov %eax, dword ptr [%eax]\n";
+				}
 				switch (writeNode.getChild(0).getType()) {
 					//Int
 					case 0: {
-						src += "\tpush dword ptr [%" + (ref != "" ? ref: "ebp-"+off) + "]\n";
+						if (writeNode.getChild(0).getParam()) {
+							src += "\tmov %ebx, dword ptr [%" + (ref != "" ? ref: scope+off) + "]\n";
+							src += "\tpush [%ebx]\n";
+						}
+						else
+							src += "\tpush dword ptr [%" + (ref != "" ? ref: scope+off) + "]\n";
 						src += "\tpush [ offset flat:.io_format + 0 ]\n";
 						break;
 					}
 					//Float
 					case 1: {
-						src += "\tsub %esp, 4\n";
-						src += "\tfld dword ptr [%" + (ref != "" ? ref: "ebp-"+off) + "]\n";
+						src += "\tsub %esp, 8\n";
+						if (writeNode.getChild(0).getParam()) {
+							src += "\tmov %ebx, dword ptr [%" + (ref != "" ? ref: scope+off) + "]\n";
+							src += "\tfld dword ptr [%ebx]\n";
+							//src += "\tpush [%ebx]\n";
+							//src += "\tfld dword ptr [%esp]\n";
+							//src += "\tadd %esp, 4";
+						}
+						else
+							src += "\tfld dword ptr [%" + (ref != "" ? ref: scope+off) + "]\n";
+						
 						src += "\tfstp qword ptr [%esp]\n";
 						src += "\tpush [ offset flat:.io_format + 4 ]\n";
 						offset = 12;
@@ -685,7 +772,13 @@ public class CodeGeneratorVisitor implements Visitor {
 					}
 					//Char
 					case 2: {
-						src += "\tpush dword ptr [%" + (ref != "" ? ref: "ebp-"+off) + "]\n";
+						if (writeNode.getChild(0).getParam()) {
+							src += "\tmov %ebx, dword ptr [%" + (ref != "" ? ref: scope+off) + "]\n";
+							src += "\tpush [%ebx]\n";
+						}
+						else
+							src += "\tpush dword ptr [%" + (ref != "" ? ref: scope+off) + "]\n";
+						
 						src += "\tpush [ offset flat:.io_format + 8 ]\n";
 						break;
 					}
@@ -703,11 +796,12 @@ public class CodeGeneratorVisitor implements Visitor {
 					src += "\tfstp qword ptr [%esp]\n";
 					src += "\tpush [ offset flat:.io_format + 4 ]\n";
 					offset = 12;
+					freeRegister(reg);
 					break;
 				} else {
 					src += "\tpush %" + reg + "\n";
 					src += "\tpush [ offset flat:.io_format + " + (type * 4) + "]\n";
-					freeRegister("eax");
+					freeRegister(reg);
 					break;
 				}
 		}
@@ -877,10 +971,22 @@ public class CodeGeneratorVisitor implements Visitor {
 	public Object visit(CallNode callNode) {
 		//Go through all expressions in the list of statements
 		String name = callNode.getLabel();
-		//if (callNode.getChild(0) != null) 
-		//	callNode.getChild(0).accept(this);
-		
+		isCall = true;
+		if (callNode.getChild(0) != null) {
+			for (ASTNode param : callNode.getChild(0).getChildren()) {
+				String reg = (String)param.accept(this);
+				if (param.getParam())
+					src += "\tpush [%" + reg + "]\n"; 
+				else	
+					src += "\tpush %" + reg + "\n";
+				freeRegister(reg);
+			}
+		}
+		isCall = false;
 		src += "\tcall " + name + "\n";
+		if (callNode.getChild(0) != null) 
+			src += "\tadd %esp, " + 4 * callNode.getChild(0).getChildren().size() + "\n";
+
 		String reg = getFreeRegister();
 		src += "\tmov %" + reg + ", %eax\n";
 		return reg; 
@@ -902,32 +1008,44 @@ public class CodeGeneratorVisitor implements Visitor {
 	@Override
 	public Object visit(IdDefNode idDefNode) {
 		int offset = idDefNode.getOffset() * -1;
-		
+		String reg = "ebp";
+		if (!idDefNode.getScope()) {
+			src += "\tmov %eax, offset flat:.__main_ebp\n";
+			src += "\tmov %eax, dword ptr [%eax]\n";
+			reg = "eax";
+		} 
 		if (idDefNode.getType() == 1) {
-			src += "\tpush %edi\n";
+			src += "\tpush %edi\n"; 
 			src += "\tfld dword ptr [%esp]\n";
 			src += "\tadd %esp, 4\n";
-			src += "\tfstp dword ptr [%ebp-" + offset + "]\n";
+			src += "\tfstp dword ptr [%" + reg + "-" + offset + "]\n";
 		}
 		else
-			src += "\tmov dword ptr [%ebp-" + offset + "], %edi\n";
+			src += "\tmov dword ptr [%" + reg + "-" + offset + "], %edi\n";
 		return null; 
 	}
 	
 	@Override
 	public Object visit(ArrayDefNode arrayDefNode) {
+		String reg = "ebp";
+		if (!arrayDefNode.getScope()) {
+			src += "\tmov %eax, offset flat:.__main_ebp\n";
+			src += "\tmov %eax, dword ptr [%eax]\n";
+			reg = "eax";
+		} 
+		
 		if (arrayDefNode.getChild(0).getClass().getSimpleName().compareTo("IdRefNode") == 0) {
 			int offset = arrayDefNode.getEndOffset();
-			src += "\tmov %eax, %edi\n";
-			src += "\tsub %eax, " + arrayDefNode.getStartDim() + "\n";
-			src += "\timul %eax, 4\n";
-			src += "\tadd %eax, " + offset + "\n";
-			src += "\tadd %eax, %ebp\n";
-			src += "\tmov dword ptr [%eax], %edi\n"; 
+			src += "\tmov %ebx, %edi\n";
+			src += "\tsub %ebx, " + arrayDefNode.getStartDim() + "\n";
+			src += "\timul %ebx, 4\n";
+			src += "\tadd %ebx, " + offset + "\n";
+			src += "\tadd %ebx, %" + reg + "\n";
+			src += "\tmov dword ptr [%ebx], %edi\n"; 
 		}
 		else {
 			int offset = arrayDefNode.getOffset() * -1;
-			src += "\tmov dword ptr [%ebp-" + offset + "], %edi\n";
+			src += "\tmov dword ptr [%" + reg + "-" + offset + "], %edi\n";
 		}
 		return null; 
 	}

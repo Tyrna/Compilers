@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.Stack;
 
 import ast.*;
-import javafx.scene.Node;
 
 public class MemoryMapVisitor implements Visitor {
 	
@@ -164,11 +163,12 @@ public class MemoryMapVisitor implements Visitor {
 		//else
 			//ArrayDeclNode idNode = (ArrayDeclNode)node;
 		n.setOffset(idNode.getOffset());
+		n.setParam(idNode.getParam());
 		n.setType(idNode.getType());
 		setType(n.getType());
 		System.out.printf("Reference at %s scope: %s %s, is on offset %d\n",
 				n.getScope() == true ? "Local" : "Global",
-				idNode.getParam() ? "Parameter" : "Variable",
+				n.getParam() ? "Parameter" : "Variable",
 				n.getLabel(), n.getOffset());
 		return null; 
 	}
@@ -455,11 +455,12 @@ public class MemoryMapVisitor implements Visitor {
 		setScope(idDefNode);
 		IdDeclNode idNode = (IdDeclNode)getNode(idDefNode.getLabel());
 		idDefNode.setOffset(idNode.getOffset());
+		idDefNode.setParam(idNode.getParam());
 		idDefNode.setType(idNode.getType());
 		setType(idDefNode.getType());
 		System.out.printf("Definition at %s scope: %s %s, is on offset %d\n",
 				idDefNode.getScope() == true ? "Local" : "Global",
-				idNode.getParam() ? "Parameter" : "Variable",
+				idDefNode.getParam() ? "Parameter" : "Variable",
 				idDefNode.getLabel(), idDefNode.getOffset());
 		return null; 
 	}
