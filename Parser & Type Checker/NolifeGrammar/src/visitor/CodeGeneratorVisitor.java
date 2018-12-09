@@ -471,8 +471,10 @@ public class CodeGeneratorVisitor implements Visitor {
 			}
 			else {
 				int off = n.getOffset();
-				if (n.getParam()) 
+				if (n.getParam()) { 
+					off = n.getParamOffset() - off;
 					off = (off * -1) + 4;
+				}
 				src += "\tmov %" + reg + ", dword ptr [%ebp" + (off > 0 ? "+" + off : off) + "]\n";
 				if (n.getParam())
 					src += "\tmov %" + reg + ", [%" + reg + "]\n"; 
@@ -750,6 +752,9 @@ public class CodeGeneratorVisitor implements Visitor {
 	@Override
 	public Object visit(ProcCallNode procCallNode) {
 		src += "#Calling a procedure...\n";
+		int constants = 0;
+		int vars = 0;
+		//List<>
 		//Go through all registers to save
 		for (String reg : registers.keySet()) {
 			if (registers.get(reg)) {
@@ -757,10 +762,43 @@ public class CodeGeneratorVisitor implements Visitor {
 			}
 		}
 		
-		//Go through all expressions in the list of statements
+		//Save the base before getting params
+		String base = getFreeRegister();
+		src += "#Save the base before the call...\n";
+		src += "\tmov %" + base + ", %esp\n";
+		
+		//check for constants
 		isCall = true;
+		src += "#Checking for constants...\n";
 		if (procCallNode.getChild(0) != null) {
-			String reg = "edi";
+			String reg;
+			for (ASTNode param : procCallNode.getChild(0).getChildren()) {
+				
+				if (param instanceof ArrayRefNode || param instanceof IdRefNode) {
+					vars++;
+					continue;
+				}
+				
+				else {
+					isCall = false;
+					reg = (String)param.accept(this);
+					isCall = true;
+					
+					src += "\tpush %" + reg + "\n";
+					src += "\tpush %esp\n";
+					src += "\tmov %" + reg + ", dword ptr [%ebp]\n";
+					constants++;
+					freeRegister(reg);
+					continue;
+				}
+			}
+		}
+		
+		src += "#Checking for variables...\n";
+		int i = 0;
+		//Go through all expressions in the list of statements
+		if (procCallNode.getChild(0) != null) {
+			String reg = "NULL";
 			for (ASTNode param : procCallNode.getChild(0).getChildren()) {
 				//ArrayRefNode
 				if (param instanceof ArrayRefNode) {
@@ -844,26 +882,47 @@ public class CodeGeneratorVisitor implements Visitor {
 						}
 					}
 				}
-				else if (param instanceof IntNode || param instanceof FloatNode) {
+					/*else if (param instanceof IntNode || param instanceof FloatNode || param instanceof CallNode) {
 					reg = (String)param.accept(this);
 					src += "\tpush %" + reg + "\n";
-					src += "\tmov %" + reg + ", dword ptr [%ebp]\n";
-				}
+					src += "\tpush %esp\n";
+					//src += "\tmov %" + reg + ", dword ptr [%ebp]\n";
+					constants++;
+					freeRegister(reg);
+					continue;
+				}*/
 				else {
-					reg = (String)param.accept(this);
+					src += "\tmov %eax, %" + base + "\n";
+					src += "\tsub %eax, " + ((i * 8) + 4) + "\n";
+					src += "\tpush %eax\n";
+					i++;
+					continue;
 				}
 				
-				if (param.getParam())
+				if (param.getParam()) 
 					src += "\tpush [%" + reg + "]\n"; 
+				
 				else	
 					src += "\tpush %" + reg + "\n";
 				freeRegister(reg);
 			}
 		}
+		
 		isCall = false;
+		
+		//For each constant pushed to stack
+		/*src += "#Getting constants from stack and pushing them in order...\n";
+		for (int i =0; i < constants; i++) {
+			src += "\tmov %eax, %" + base + "\n";
+			src += "\tsub %eax, " + ((i * 8) + 4) + "\n";
+			src += "\tpush %eax\n";
+		}*/
+		
+		freeRegister(base);
+		
 		src += "\tcall " + procCallNode.getLabel() + "\n";
 		if (procCallNode.getChild(0) != null) 
-			src += "\tadd %esp, " + 4 * procCallNode.getChild(0).getChildren().size() + "\n";
+			src += "\tadd %esp, " + (4 * (procCallNode.getChild(0).getChildren().size() + (2 *constants))) + "\n";
 		
 		//Recover all saved registers
 		for (String regs : registers.keySet()) {
@@ -929,7 +988,8 @@ public class CodeGeneratorVisitor implements Visitor {
 				String scope = "ebp-";
 				if (writeNode.getChild(0).getParam()) {
 					scope = "ebp+";
-					off = off + 4;
+					off = off  + 4;
+					off = (writeNode.getChild(0).getParamOffset() + off -8) * -1;
 				}
 				if (!writeNode.getChild(0).getScope()) {
 					scope = "eax-";
@@ -1195,6 +1255,7 @@ public class CodeGeneratorVisitor implements Visitor {
 	public Object visit(CallNode callNode) {
 		src += "#Calling a function...\n";
 		int constants = 0;
+		int vars = 0;
 		//Go through all registers to save
 		for (String reg : registers.keySet()) {
 			if (registers.get(reg)) {
@@ -1202,12 +1263,44 @@ public class CodeGeneratorVisitor implements Visitor {
 			}
 		}
 		
+		//Save the base before getting params
+		String base = getFreeRegister();
+		src += "#Save the base before the call...\n";
+		src += "\tmov %" + base + ", %esp\n";
+		
 		
 		//Go through all expressions in the list of statements
 		String name = callNode.getLabel();
 		isCall = true;
+		
+		src += "#Checking for constants...\n";
 		if (callNode.getChild(0) != null) {
-			String reg = "edi";
+			String reg;
+			for (ASTNode param : callNode.getChild(0).getChildren()) {
+				
+				if (param instanceof ArrayRefNode || param instanceof IdRefNode) {
+					vars++;
+					continue;
+				}
+				
+				else {
+					isCall = false;
+					reg = (String)param.accept(this);
+					isCall = true;
+					src += "\tpush %" + reg + "\n";
+					src += "\tpush %esp\n";
+					src += "\tmov %" + reg + ", dword ptr [%ebp]\n";
+					constants++;
+					freeRegister(reg);
+					continue;
+				}
+			}
+		}
+		
+		
+		int i = 0;
+		if (callNode.getChild(0) != null) {
+			String reg = "NULL";
 			for (ASTNode param : callNode.getChild(0).getChildren()) {
 				//ArrayRefNode
 				if (param instanceof ArrayRefNode) {
@@ -1291,14 +1384,21 @@ public class CodeGeneratorVisitor implements Visitor {
 						}
 					}
 				}
-				else if (param instanceof IntNode || param instanceof FloatNode) {
+				/*else if (param instanceof IntNode || param instanceof FloatNode || param instanceof CallNode) {
 					reg = (String)param.accept(this);
 					src += "\tpush %" + reg + "\n";
-					src += "\tmov %" + reg + ", dword ptr [%ebp]\n";
+					src += "\tpush %esp\n";
+					//src += "\tmov %" + reg + ", dword ptr [%ebp]\n";
 					constants++;
-				}
+					freeRegister(reg);
+					continue;
+				}*/
 				else {
-					reg = (String)param.accept(this);
+					src += "\tmov %eax, %" + base + "\n";
+					src += "\tsub %eax, " + ((i * 8) + 4) + "\n";
+					src += "\tpush %eax\n";
+					i++;
+					continue;
 				}
 				
 				if (param.getParam())
@@ -1309,6 +1409,17 @@ public class CodeGeneratorVisitor implements Visitor {
 			}
 		}
 		isCall = false;
+		
+		/*//For each constant pushed to stack
+		src += "#Getting constants from stack and pushing them in order...\n";
+		for (int i =0; i < constants; i++) {
+			src += "\tmov %eax, %" + base + "\n";
+			src += "\tsub %eax, " + ((i * 8) + 4) + "\n";
+			src += "\tpush %eax\n";
+		}*/
+		
+		freeRegister(base);
+		
 		src += "\tcall " + name + "\n";
 		if (callNode.getChild(0) != null) 
 			src += "\tadd %esp, " + (4 * (callNode.getChild(0).getChildren().size() + constants)) + "\n";
@@ -1373,6 +1484,7 @@ public class CodeGeneratorVisitor implements Visitor {
 			}
 			
 			if (idDefNode.getParam()) {
+				offset = idDefNode.getParamOffset() - offset;
 				offset = (offset * -1) + 4;
 				src += "\tmov %eax, dword ptr [%ebp+" + offset + "]\n";
 				src += "\tmov dword ptr [%eax], %edi\n";

@@ -13,6 +13,7 @@ public abstract class ASTNode {
 	protected int offset;
 	protected boolean scope;
 	protected boolean param;
+	private int paramOffset;
 	
 	public abstract Object accept(Visitor v);
 	
@@ -76,5 +77,13 @@ public abstract class ASTNode {
 	
 	public boolean getParam() {
 		return param;
+	}
+	
+	public void setParamOffset(int x) {
+		paramOffset = x;
+	}
+	
+	public int getParamOffset() {
+		return paramOffset;
 	}
 }

@@ -183,13 +183,14 @@ public class MemoryMapVisitor implements Visitor {
 			ArrayDeclNode arrN = (ArrayDeclNode) idNode;
 			n.setOffset(arrN.getEndOffset());
 		}
+		n.setParamOffset(idNode.getParamOffset());
 		n.setParam(idNode.getParam());
 		n.setRealType(idNode.getType());
 		setType(n.getRealType());
 		System.out.printf("Reference at %s scope: %s %s, is on offset %d\n",
 				n.getScope() == true ? "Local" : "Global",
 				n.getParam() ? "Parameter" : "Variable",
-				n.getLabel(), n.getOffset());
+				n.getLabel(), n.getParamOffset() - n.getOffset());
 		return null; 
 	}
 	
@@ -439,6 +440,12 @@ public class MemoryMapVisitor implements Visitor {
 		paramNode.getChild(0).accept(this);
 		for (int i = 1; i < paramNode.getChildren().size(); i++)
 			paramNode.getChild(i).accept(this);
+		
+		int mainOffset = offset -4;
+		for (int i = 0; i < paramNode.getChildren().size(); i++) 
+			paramNode.getChild(i).getChild(0).setParamOffset(mainOffset);
+
+		
 		offset = 0;
 		params = false;
 	return null; }
@@ -492,6 +499,7 @@ public class MemoryMapVisitor implements Visitor {
 		IdDeclNode idNode = (IdDeclNode)getNode(idDefNode.getLabel());
 		idDefNode.setOffset(idNode.getOffset());
 		idDefNode.setParam(idNode.getParam());
+		idDefNode.setParamOffset(idNode.getParamOffset());
 		idDefNode.setRealType(idNode.getType());
 		setType(idDefNode.getRealType());
 		System.out.printf("Definition at %s scope: %s %s, is on offset %d\n",

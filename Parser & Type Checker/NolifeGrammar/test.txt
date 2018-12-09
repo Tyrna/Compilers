@@ -1,68 +1,86 @@
-{*********************************************************
+{** $awkdoc$ ********************************************************
 
-This testcase checks subroutine calls, both recursive and
-nonrecursive, as well as parameter passing.
+A version of quicksort for testing recursion: reads and sorts
+19 INTEGER.
 
-*********************************************************}
+** $endawk$ ********************************************************}
 
-PROGRAM subprog;
- VAR i,j,k,l:INTEGER;
-     a,b,c,d:INTEGER;
-     C1,C2:CHARACTER;
-
-
-FUNCTION b4 (a:INTEGER) :INTEGER;
+PROGRAM qs;
+  VAR  A:  ARRAY [0..20] OF INTEGER;
+PROCEDURE  readarray;
+  VAR  i:  INTEGER;
 BEGIN
-	WRITE(4);
-	RETURN a+1
+  WRITE ('A?');
+  i := 1;
+  WHILE i < 20 DO
+    BEGIN
+      WRITE (i);
+      READ (A[i]);
+      i := i + 1
+    END
 END;
-
-
-{* test pass by ref parms *}
-PROCEDURE d2(a,b:INTEGER);
-VAR tmp:INTEGER;
+PROCEDURE  writearray;
+  VAR  i:  INTEGER;
 BEGIN
-	WRITE(b);
-        WRITE(a);
-	tmp:=a;
-	a:=b;
-	b:=tmp
+  WRITE ('A:');
+  i := 1;
+  WHILE i < 20 DO
+    BEGIN
+      WRITE (A[i]);
+      i := i + 1
+    END
 END;
-
-PROCEDURE d3(a,b,c,d:INTEGER);
+FUNCTION partition(
+        B:  ARRAY [0..20] OF INTEGER;
+      p,r:  INTEGER
+) : INTEGER;
+  VAR i, j: INTEGER;
+      x, t,z: INTEGER;
 BEGIN
-	a:=a+1;
-	b:=b+2;
-	c:=c+3;
-	d:=d
+  x := B[p];
+  i := p - 1;
+  j := r + 1;
+  WHILE 1.7 DO
+    BEGIN
+      j := j-1;
+      WHILE A[j] > x DO
+        BEGIN
+          j := j-1
+        END;
+      i := i+1;
+      WHILE A[i] < x DO
+        BEGIN
+          i := i+1
+        END;
+      IF i < j
+        THEN
+          BEGIN
+            t := A[i];
+            A[i] := A[j];
+            A[j] := t
+          END
+        ELSE
+          RETURN j
+    END
 END;
-
-PROCEDURE d1(a:INTEGER);
-VAR b:INTEGER;
-
+PROCEDURE quicksort(
+     Z: ARRAY [0..20] OF INTEGER;
+     p,r: INTEGER
+);
+  VAR q:  INTEGER;
 BEGIN
-	b:=a*200;
-	WRITE(a); WRITE(b);
-	d2(a,b);
-	WRITE(a); WRITE(b);
-	d3(a,a,a,b);
-	WRITE(a); WRITE(b);
-	d3(b,b,b,b);
-	WRITE(a); WRITE(b)
+  IF p < r
+    THEN
+      BEGIN
+        q := partition(Z,p,r);
+        quicksort(Z,p,q);
+        quicksort(Z,q+1,r)
+      END
 END;
-
-
-{*main*}
 BEGIN
-	a:=1; b:=2; c:=3; d:=4;
-	i:=1; j:=2; k:=3; l:=4;
-
-
-
-	WRITE(b4(k));
-	d1(a);
-	WRITE(a);
-	WRITE(b4(b4(1)))
-
-
+  A[0] := 0-1; A[20] :=  1000;  { book does this; don't know why }
+  readarray();
+  writearray();
+  quicksort(A,1,19);
+  writearray()
 END
