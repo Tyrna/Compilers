@@ -9,6 +9,7 @@ public abstract class ASTNode {
 	protected List<ASTNode> children = new ArrayList<ASTNode>();
 	protected String label;
 	protected int expectedType;
+	protected int realType;
 	protected int offset;
 	protected boolean scope;
 	protected boolean param;
@@ -51,6 +52,14 @@ public abstract class ASTNode {
 	
 	public int getType() {
 		return expectedType;
+	}
+	
+	public void setRealType(int t) {
+		realType = t;
+	}
+	
+	public int getRealType() {
+		return realType;
 	}
 	
 	public void setScope(boolean s) {

@@ -47,6 +47,12 @@ public class CodeGeneratorVisitor implements Visitor {
 		String reg = getFreeRegister();
 		int off = n.getOffset() * -1;
 		src += "\tmov %" + reg + ", [ _constant + " + off + " ]\n";
+		if (n.getType() == INTEGER) {
+			src += "\tpush %" + reg + "\n";
+			src += "\tfld dword ptr [%esp]\n";
+			src += "\tfisttp dword ptr [%esp]\n";
+			src += "\tpop %" + reg + "\n";
+		}
 		type = 1;
 		return reg; 
 	}
@@ -69,15 +75,23 @@ public class CodeGeneratorVisitor implements Visitor {
 			src += "\tadd %" + leftReg +", %" + rightReg + "\n";
 		else {
 			src += "#Float addition...\n";
-			if (n.getLeft().getClass().getSimpleName().compareTo("IdRefNode") == 0)
-				src += "\tfld dword ptr [%ebp-" + (n.getLeft().getOffset() * -1) + "]\n";
+			if (n.getLeft().getClass().getSimpleName().compareTo("IdRefNode") == 0) {
+				//src += "\tfld dword ptr [%ebp-" + (n.getLeft().getOffset() * -1) + "]\n";
+				src += "\tpush %" + leftReg + "\n";
+				src += "\tfld dword ptr [%esp]\n";
+				src += "\tadd %esp, 4\n";
+			}
 			else {
 				src += "\tpush %" + leftReg + "\n";
 				src += "\tfld dword ptr [%esp]\n";
 				src += "\tadd %esp, 4\n";
 			}
-			if (n.getRight().getClass().getSimpleName().compareTo("IdRefNode") == 0)
-				src += "\tfadd dword ptr [%ebp-" + (n.getRight().getOffset() * -1) + "]\n";
+			if (n.getRight().getClass().getSimpleName().compareTo("IdRefNode") == 0) {
+				//src += "\tfadd dword ptr [%ebp-" + (n.getRight().getOffset() * -1) + "]\n";
+				src += "\tpush %" + rightReg + "\n";
+				src += "\tfadd dword ptr [%esp]\n";
+				src += "\tadd %esp, 4\n";
+			}
 			else {
 				src += "\tpush %" + rightReg + "\n";
 				src += "\tfadd dword ptr [%esp]\n";
@@ -101,15 +115,23 @@ public class CodeGeneratorVisitor implements Visitor {
 			src += "\tsub %" + leftReg +", %" + rightReg + "\n";
 		else {
 			src += "#Float substraction...\n";
-			if (n.getLeft().getClass().getSimpleName().compareTo("IdRefNode") == 0)
-				src += "\tfld dword ptr [%ebp-" + (n.getLeft().getOffset() * -1) + "]\n";
+			if (n.getLeft().getClass().getSimpleName().compareTo("IdRefNode") == 0) {
+				//src += "\tfld dword ptr [%ebp-" + (n.getLeft().getOffset() * -1) + "]\n";
+				src += "\tpush %" + leftReg + "\n";
+				src += "\tfld dword ptr [%esp]\n";
+				src += "\tadd %esp, 4\n";
+			}
 			else {
 				src += "\tpush %" + leftReg + "\n";
 				src += "\tfld dword ptr [%esp]\n";
 				src += "\tadd %esp, 4\n";
 			}
-			if (n.getRight().getClass().getSimpleName().compareTo("IdRefNode") == 0)
-				src += "\tfsub dword ptr [%ebp-" + (n.getRight().getOffset() * -1) + "]\n";
+			if (n.getRight().getClass().getSimpleName().compareTo("IdRefNode") == 0) {
+				//src += "\tfsub dword ptr [%ebp-" + (n.getRight().getOffset() * -1) + "]\n";
+				src += "\tpush %" + rightReg + "\n";
+				src += "\tfsub dword ptr [%esp]\n";
+				src += "\tadd %esp, 4\n";
+			}
 			else {
 				src += "\tpush %" + rightReg + "\n";
 				src += "\tfsub dword ptr [%esp]\n";
@@ -146,15 +168,23 @@ public class CodeGeneratorVisitor implements Visitor {
 			src += "\timul %" + leftReg +", %" + rightReg + "\n";
 		else {
 			src += "#Float Multiplication...\n";
-			if (n.getLeft().getClass().getSimpleName().compareTo("IdRefNode") == 0)
-				src += "\tfld dword ptr [%ebp-" + (n.getLeft().getOffset() * -1) + "]\n";
+			if (n.getLeft().getClass().getSimpleName().compareTo("IdRefNode") == 0) {
+				//src += "\tfld dword ptr [%ebp-" + (n.getLeft().getOffset() * -1) + "]\n";
+				src += "\tpush %" + leftReg + "\n";
+				src += "\tfld dword ptr [%esp]\n";
+				src += "\tadd %esp, 4\n";
+			}
 			else {
 				src += "\tpush %" + leftReg + "\n";
 				src += "\tfld dword ptr [%esp]\n";
 				src += "\tadd %esp, 4\n";
 			}
-			if (n.getRight().getClass().getSimpleName().compareTo("IdRefNode") == 0)
-				src += "\tfmul dword ptr [%ebp-" + (n.getRight().getOffset() * -1) + "]\n";
+			if (n.getRight().getClass().getSimpleName().compareTo("IdRefNode") == 0) {
+				//src += "\tfmul dword ptr [%ebp-" + (n.getRight().getOffset() * -1) + "]\n";
+				src += "\tpush %" + rightReg + "\n";
+				src += "\tfmul dword ptr [%esp]\n";
+				src += "\tadd %esp, 4\n";
+			}
 			else {
 				src += "\tpush %" + rightReg + "\n";
 				src += "\tfmul dword ptr [%esp]\n";
@@ -197,7 +227,6 @@ public class CodeGeneratorVisitor implements Visitor {
 		src += "\tmov %" + leftReg + ", 0\n";
 		src += ".L" + Label + ":\n";
 		
-		freeRegister(leftReg);
 		freeRegister(rightReg);
 		type = INTEGER;
 		return leftReg; 
@@ -233,7 +262,6 @@ public class CodeGeneratorVisitor implements Visitor {
 		src += ".L" + Label + ":\n";
 		
 		type = INTEGER;
-		freeRegister(leftReg);
 		freeRegister(rightReg);
 		return leftReg; 
 	}
@@ -267,7 +295,6 @@ public class CodeGeneratorVisitor implements Visitor {
 		src += "\tmov %" + leftReg + ", 0\n";
 		src += ".L" + Label + ":\n";
 		
-		freeRegister(leftReg);
 		freeRegister(rightReg);
 		type = INTEGER;
 		return leftReg; 
@@ -302,7 +329,6 @@ public class CodeGeneratorVisitor implements Visitor {
 		src += "\tmov %" + leftReg + ", 0\n";
 		src += ".L" + Label + ":\n";
 		
-		freeRegister(leftReg);
 		freeRegister(rightReg);
 		type = INTEGER;
 		return leftReg; 
@@ -335,7 +361,6 @@ public class CodeGeneratorVisitor implements Visitor {
 		src += "\tmov %" + leftReg + ", 0\n";
 		src += ".L" + Label + ":\n";
 		
-		freeRegister(leftReg);
 		freeRegister(rightReg);
 		type = INTEGER;
 		return leftReg; 
@@ -368,7 +393,6 @@ public class CodeGeneratorVisitor implements Visitor {
 		src += "\tmov %" + leftReg + ", 0\n";
 		src += ".L" + Label + ":\n";
 		
-		freeRegister(leftReg);
 		freeRegister(rightReg);
 		type = INTEGER;
 		return leftReg; 
@@ -376,23 +400,44 @@ public class CodeGeneratorVisitor implements Visitor {
 	
 	@Override
 	public Object visit(AndNode n) {
-		n.getLeft().accept(this);
-		n.getRight().accept(this);
-	return null; }
+		src += "#AND Expresion...\n";
+		String leftReg = (String)n.getLeft().accept(this);
+		String rightReg = (String)n.getRight().accept(this);
+		
+		src += "\tcmp %" + leftReg + ", 1\n";
+		src += "\tjne .L" + ++Label + "\n";
+		int i = Label;
+		src += "\tcmp %" + rightReg + ", 1\n";
+		src += "\tjne .L" + Label + "\n";
+		src += "\tmov %" + leftReg + ", 1\n";
+		src += "\tjmp .L" + ++Label + "\n";
+		src += ".L" + i + ":\n";
+		src += "\tmov %" + leftReg + ", 0\n";
+		src += ".L" + Label + ":\n";
+		
+		freeRegister(rightReg);
+		return leftReg; 
+	}
 	
 	@Override
 	public Object visit(OrNode n) {
+		src += "#OR Expresion...\n";
 		String leftReg = (String)n.getLeft().accept(this);
-		
-		src += "\tcmp %" + leftReg + ", 0\n";
-		
 		String rightReg = (String)n.getRight().accept(this);
 		
-		src += "\tcmp %" + rightReg + ", 0\n";
+		src += "\tcmp %" + leftReg + ", 1\n";
+		src += "\tje .L" + ++Label + "\n";
+		int i = Label;
+		src += "\tcmp %" + rightReg + ", 1\n";
+		src += "\tje .L" + Label + "\n";
+		src += "\tmov %" + leftReg + ", 0\n";
+		src += "\tjmp .L" + ++Label + "\n";
+		src += ".L" + i + ":\n";
+		src += "\tmov %" + leftReg + ", 1\n";
+		src += ".L" + Label + ":\n";
 		
-		freeRegister(leftReg);
 		freeRegister(rightReg);
-		return null; 
+		return leftReg; 
 	}
 	
 	@Override
@@ -408,6 +453,8 @@ public class CodeGeneratorVisitor implements Visitor {
 					src += "\tadd %" + reg + ", " + ((n.getOffset() * -1) + 4) + "\n";
 				else
 					src += "\tsub %" + reg + ", " + (n.getOffset() * -1) + "\n";
+				
+				src += "\tmov %" + reg + ", [%" + reg + "]\n";
 			}
 			else
 				src += "\tmov %" + reg + ", dword ptr [%eax" + n.getOffset() + "]\n";
@@ -415,10 +462,12 @@ public class CodeGeneratorVisitor implements Visitor {
 		else {
 			if (isCall) {
 				src += "\tmov %" + reg + ", %ebp\n";
-				if (n.getParam())
+				if (n.getParam()) 
 					src += "\tadd %" + reg + ", " + ((n.getOffset() * -1) + 4) + "\n";
 				else
 					src += "\tsub %" + reg + ", " + (n.getOffset() * -1) + "\n";
+				
+				src += "\tmov %" + reg + ", [%" + reg + "]\n";
 			}
 			else {
 				int off = n.getOffset();
@@ -430,7 +479,27 @@ public class CodeGeneratorVisitor implements Visitor {
 			}
 		}
 		
-		type = n.getType();
+		
+		//System.out.println(n.getRealType());
+		//System.out.println(n.getType());
+		if (n.getType() == 1) {
+			src += "\tpush %" + reg + "\n"; 
+			if (n.getRealType() == 0) 
+				src += "\tfild dword ptr [%esp]\n";
+			else
+				src += "\tfld dword ptr [%esp]\n";
+			
+			src += "\tfstp dword ptr [%esp]\n";
+			src += "\tpop %" + reg + "\n";
+		}
+		else if (n.getType() == 0) {
+			if (n.getRealType() == 1) {
+				 src += "\tpush %edi\n";
+	             src += "\tfld dword ptr [%esp]\n";
+	             src += "\tfisttp dword ptr [%esp]\n";
+	             src += "\tpop %edi\n";
+			}
+		}
 		return reg; 
 	}
 	
@@ -446,36 +515,41 @@ public class CodeGeneratorVisitor implements Visitor {
 		if (arrayRefNode.getChild(0).getClass().getSimpleName().compareTo("IdRefNode") == 0) {
 			String toReg = (String)arrayRefNode.getChild(0).accept(this);
 			int offset = arrayRefNode.getEndOffset();
-			String newReg = getFreeRegister();
 			freeRegister(toReg);
-			src += "\tmov %" + reg + ", %" + toReg + "\n";
-			src += "\tsub %" + reg + ", " + arrayRefNode.getStartDim() + "\n";
-			src += "\timul %" + reg + ", 4\n";
-			src += "\tadd %" + reg + ", " + offset + "\n";
-			src += "\tadd %" + reg +", %" + scope + "\n";
-			freeRegister(newReg);
-			if (isCall) {
-				src += "\tmov %" + newReg + ", %" + reg + "\n";
-				src += "\tmov %" + reg + ", %" + scope + "\n";
-				if (arrayRefNode.getParam())
-					src += "\tadd %" + reg + ", %" + newReg + "\n";
-				else
-					src += "\tsub %" + reg + ", %" + newReg + "\n";
+			if (arrayRefNode.getParam()) {
+				offset = ((arrayRefNode.getParamOffset() - 8) * -1);
+				src += "\tmov %ebx, %" + toReg + "\n";
+				src += "\tsub %ebx, " + arrayRefNode.getStartDim() + "\n";
+				src += "\timul %ebx, 4\n";
+				src += "\tmov %eax, dword ptr [%ebp+" + offset + "]\n";
+				src += "\tadd %eax, %ebx\n";
+				src += "\tmov %edi, %eax\n"; 
+				
 			}
-			else
-				src += "\tmov %" + reg + ", dword ptr [%" + scope + arrayRefNode.getOffset() + "]\n";
+			else {
+				src += "\tmov %" + reg + ", %" + toReg + "\n";
+				src += "\tsub %" + reg + ", " + arrayRefNode.getStartDim() + "\n";
+				src += "\timul %" + reg + ", 4\n";
+				src += "\tadd %" + reg + ", " + offset + "\n";
+				src += "\tadd %" + reg +", %" + scope + "\n";
+				src += "\tmov %" + reg + ", [%" + reg + "]\n";
+				//src += "\tmov %" + reg + ", dword ptr [%" + scope + (scope.compareTo("eax") == 0 ? "+" : "-") + (arrayRefNode.getOffset() * -1)  + "]\n";
+			}
 		}
 		else {
-			if (isCall) {
-				src += "\tmov %" + reg + ", %" + scope + "\n";
-				if (arrayRefNode.getParam())
-					src += "\tadd %" + reg + ", " + ((arrayRefNode.getOffset() * -1) + 4) + "\n";
-				else
-					src += "\tsub %" + reg + ", " + (arrayRefNode.getOffset() * -1) + "\n";
+			if (arrayRefNode.getParam()) {
+				int realOff = (arrayRefNode.getEndOffset() - arrayRefNode.getOffset()) * -1;
+				int offset = ((arrayRefNode.getParamOffset() - 8) * -1);
+				src += "\tmov %ebx, dword ptr [%" + scope + "+"  + offset + "]\n";
+				src += "\tadd %ebx, " + realOff + "\n";
+				src += "\tmov %" + reg + ", dword ptr [%ebx]\n";
 			}
 			else
 				src += "\tmov %" + reg + ", dword ptr [%" + scope + arrayRefNode.getOffset() + "]\n";
 		}
+		
+		if (type != 1)
+			type = arrayRefNode.getType();
 		return reg; 
 	}
 	
@@ -629,6 +703,7 @@ public class CodeGeneratorVisitor implements Visitor {
 		src += "#Assigned variable...\n";
 		assignNode.getChild(0).accept(this);
 		freeRegister("edi");
+		type = 0;
 		return null; 
 	}
 	
@@ -652,6 +727,7 @@ public class CodeGeneratorVisitor implements Visitor {
 		else
 			src += ".L" + l + ":\n";
 		
+		freeRegister(reg);
 		return null; 
 	}
 	
@@ -673,12 +749,129 @@ public class CodeGeneratorVisitor implements Visitor {
 	
 	@Override
 	public Object visit(ProcCallNode procCallNode) {
-		//Go through all expressions in the list of statements
-		String name = procCallNode.getLabel();
-		//if (procCallNode.getChild(0) != null) 
-		//	procCallNode.getChild(0).accept(this);
+		src += "#Calling a procedure...\n";
+		//Go through all registers to save
+		for (String reg : registers.keySet()) {
+			if (registers.get(reg)) {
+				src += "\tpush %" + reg + "\n";
+			}
+		}
 		
-		src += "\tcall " + name + "\n";
+		//Go through all expressions in the list of statements
+		isCall = true;
+		if (procCallNode.getChild(0) != null) {
+			String reg = "edi";
+			for (ASTNode param : procCallNode.getChild(0).getChildren()) {
+				//ArrayRefNode
+				if (param instanceof ArrayRefNode) {
+					ArrayRefNode node = (ArrayRefNode)param;
+					reg = getFreeRegister();
+					String scope = "ebp";
+					if (!param.getScope()) {
+						src += "\tmov %eax, offset flat:.__main_ebp\n";
+						src += "\tmov %eax, dword ptr [%eax]\n";
+						scope = "eax";
+					} 
+					if (node.getChild(0).getClass().getSimpleName().compareTo("IdRefNode") == 0) {
+						String toReg = (String)node.getChild(0).accept(this);
+						int offset = node.getEndOffset();
+						freeRegister(toReg);
+						if (node.getParam()) {
+							offset = ((node.getParamOffset() - 8) * -1);
+							src += "\tmov %ebx, %" + toReg + "\n";
+							src += "\tsub %ebx, " + node.getStartDim() + "\n";
+							src += "\timul %ebx, 4\n";
+							src += "\tmov %eax, dword ptr [%ebp+" + offset + "]\n";
+							src += "\tadd %eax, %ebx\n";
+							src += "\tmov %edi, %eax\n"; 
+							
+						}
+						else {
+							src += "\tmov %" + reg + ", %" + toReg + "\n";
+							src += "\tsub %" + reg + ", " + node.getStartDim() + "\n";
+							src += "\timul %" + reg + ", 4\n";
+							src += "\tadd %" + reg + ", " + offset + "\n";
+							src += "\tadd %" + reg +", %" + scope + "\n";
+							//src += "\tmov %" + reg + ", dword ptr [%" + scope + (scope.compareTo("eax") == 0 ? "+" : "-") + (arrayRefNode.getOffset() * -1)  + "]\n";
+						}
+					}
+					else {
+						if (node.getParam()) {
+							int realOff = (node.getEndOffset() - node.getOffset()) * -1;
+							int offset = ((node.getParamOffset() - 8) * -1);
+							src += "\tmov %ebx, dword ptr [%" + scope + "+"  + offset + "]\n";
+							src += "\tadd %ebx, " + realOff + "\n";
+							src += "\tmov %" + reg + ", dword ptr [%ebx]\n";
+						}
+						else
+							src += "\tmov %" + reg + ", dword ptr [%" + scope + node.getOffset() + "]\n";
+					}
+					
+				}
+				//If idrefNode
+				else if (param instanceof IdRefNode) {
+					IdRefNode n = (IdRefNode)param;
+					reg = getFreeRegister();
+					
+					if (!n.getScope()) {
+						src += "\tmov %eax, offset flat:.__main_ebp\n";
+						src += "\tmov %eax, dword ptr [%eax]\n";
+						if (isCall) {
+							src += "\tmov %" + reg + ", %eax\n";
+							if (n.getParam())
+								src += "\tadd %" + reg + ", " + ((n.getOffset() * -1) + 4) + "\n";
+							else
+								src += "\tsub %" + reg + ", " + (n.getOffset() * -1) + "\n";
+						}
+						else
+							src += "\tmov %" + reg + ", dword ptr [%eax" + n.getOffset() + "]\n";
+					} 
+					else {
+						if (isCall) {
+							src += "\tmov %" + reg + ", %ebp\n";
+							if (n.getParam())
+								src += "\tadd %" + reg + ", " + ((n.getOffset() * -1) + 4) + "\n";
+							else
+								src += "\tsub %" + reg + ", " + (n.getOffset() * -1) + "\n";
+						}
+						else {
+							int off = n.getOffset();
+							if (n.getParam()) 
+								off = (off * -1) + 4;
+							src += "\tmov %" + reg + ", dword ptr [%ebp" + (off > 0 ? "+" + off : off) + "]\n";
+							if (n.getParam())
+								src += "\tmov %" + reg + ", %" + reg + "\n"; 
+						}
+					}
+				}
+				else if (param instanceof IntNode || param instanceof FloatNode) {
+					reg = (String)param.accept(this);
+					src += "\tpush %" + reg + "\n";
+					src += "\tmov %" + reg + ", dword ptr [%ebp]\n";
+				}
+				else {
+					reg = (String)param.accept(this);
+				}
+				
+				if (param.getParam())
+					src += "\tpush [%" + reg + "]\n"; 
+				else	
+					src += "\tpush %" + reg + "\n";
+				freeRegister(reg);
+			}
+		}
+		isCall = false;
+		src += "\tcall " + procCallNode.getLabel() + "\n";
+		if (procCallNode.getChild(0) != null) 
+			src += "\tadd %esp, " + 4 * procCallNode.getChild(0).getChildren().size() + "\n";
+		
+		//Recover all saved registers
+		for (String regs : registers.keySet()) {
+			if (registers.get(regs)) {
+				src += "\tpop %" + regs + "\n";
+			}
+		}
+		
 		return null; 
 	}
 	
@@ -688,6 +881,7 @@ public class CodeGeneratorVisitor implements Visitor {
 		String ref = "";
 		int off = writeNode.getChild(0).getOffset() * -1;
 		int offset = 8;
+		boolean ifExpr = false;
 		
 		//If float...
 		switch (writeNode.getChild(0).getClass().getSimpleName()) {
@@ -726,9 +920,11 @@ public class CodeGeneratorVisitor implements Visitor {
 				if (writeNode.getChild(0).getChild(0).getClass().getSimpleName().compareTo("IdRefNode") == 0) {
 					ref = (String)writeNode.getChild(0).accept(this);
 					freeRegister(ref);
+					ifExpr = true;
 				}
 					
 				off = writeNode.getChild(0).getOffset() * -1;
+				
 			case "IdRefNode": {
 				String scope = "ebp-";
 				if (writeNode.getChild(0).getParam()) {
@@ -740,15 +936,34 @@ public class CodeGeneratorVisitor implements Visitor {
 					src += "\tmov %eax, offset flat:.__main_ebp\n";
 					src += "\tmov %eax, dword ptr [%eax]\n";
 				}
-				switch (writeNode.getChild(0).getType()) {
+				switch (writeNode.getChild(0).getRealType()) {
 					//Int
 					case 0: {
 						if (writeNode.getChild(0).getParam()) {
-							src += "\tmov %ebx, dword ptr [%" + (ref != "" ? ref: scope+off) + "]\n";
-							src += "\tpush [%ebx]\n";
+							if (writeNode.getChild(0).getClass().getSimpleName().compareTo("ArrayRefNode") == 0) {
+								ArrayRefNode x = (ArrayRefNode) writeNode.getChild(0);
+								int realOff = (x.getEndOffset() - x.getOffset()) * -1;
+								off = ((x.getParamOffset() - 8) * -1);
+								src += "\tmov %ebx, dword ptr [%" + (ref != "" ? ref: scope+off) + "]\n";
+								if (ifExpr)
+									src += "\tpush %ebx\n";
+								else
+									src += "\tpush [%ebx" + (realOff == 0 ? "" : "+" + realOff) + "]\n";
+							}
+							else {
+								src += "\tmov %ebx, dword ptr [%" + (ref != "" ? ref: scope+off) + "]\n";
+								if (ifExpr)
+									src += "\tpush %ebx\n";
+								else
+									src += "\tpush [%ebx]\n";
+							}
 						}
 						else
-							src += "\tpush dword ptr [%" + (ref != "" ? ref: scope+off) + "]\n";
+							if (ifExpr)
+								src += "\tpush %" + (ref != "" ? ref: scope+off) + "\n";
+							else
+								src += "\tpush dword ptr [%" + (ref != "" ? ref: scope+off) + "]\n";
+						
 						src += "\tpush [ offset flat:.io_format + 0 ]\n";
 						break;
 					}
@@ -756,8 +971,17 @@ public class CodeGeneratorVisitor implements Visitor {
 					case 1: {
 						src += "\tsub %esp, 8\n";
 						if (writeNode.getChild(0).getParam()) {
-							src += "\tmov %ebx, dword ptr [%" + (ref != "" ? ref: scope+off) + "]\n";
-							src += "\tfld dword ptr [%ebx]\n";
+							if (writeNode.getChild(0).getClass().getSimpleName().compareTo("ArrayRefNode") == 0) {
+								ArrayRefNode x = (ArrayRefNode) writeNode.getChild(0);
+								int realOff = (x.getEndOffset() - x.getOffset()) * -1;
+								off = ((x.getParamOffset() - 8) * -1);
+								src += "\tmov %ebx, dword ptr [%" + (ref != "" ? ref: scope+off) + "]\n";
+								src += "\tfld dword ptr [%ebx" + (realOff == 0 ? "" : "+" + realOff) + "]\n";
+							}
+							else {
+								src += "\tmov %ebx, dword ptr [%" + (ref != "" ? ref: scope+off) + "]\n";
+								src += "\tfld dword ptr [%ebx]\n";
+							}
 							//src += "\tpush [%ebx]\n";
 							//src += "\tfld dword ptr [%esp]\n";
 							//src += "\tadd %esp, 4";
@@ -969,12 +1193,114 @@ public class CodeGeneratorVisitor implements Visitor {
 	
 	@Override
 	public Object visit(CallNode callNode) {
+		src += "#Calling a function...\n";
+		int constants = 0;
+		//Go through all registers to save
+		for (String reg : registers.keySet()) {
+			if (registers.get(reg)) {
+				src += "\tpush %" + reg + "\n";
+			}
+		}
+		
+		
 		//Go through all expressions in the list of statements
 		String name = callNode.getLabel();
 		isCall = true;
 		if (callNode.getChild(0) != null) {
+			String reg = "edi";
 			for (ASTNode param : callNode.getChild(0).getChildren()) {
-				String reg = (String)param.accept(this);
+				//ArrayRefNode
+				if (param instanceof ArrayRefNode) {
+					ArrayRefNode node = (ArrayRefNode)param;
+					reg = getFreeRegister();
+					String scope = "ebp";
+					if (!param.getScope()) {
+						src += "\tmov %eax, offset flat:.__main_ebp\n";
+						src += "\tmov %eax, dword ptr [%eax]\n";
+						scope = "eax";
+					} 
+					if (node.getChild(0).getClass().getSimpleName().compareTo("IdRefNode") == 0) {
+						String toReg = (String)node.getChild(0).accept(this);
+						int offset = node.getEndOffset();
+						freeRegister(toReg);
+						if (node.getParam()) {
+							offset = ((node.getParamOffset() - 8) * -1);
+							src += "\tmov %ebx, %" + toReg + "\n";
+							src += "\tsub %ebx, " + node.getStartDim() + "\n";
+							src += "\timul %ebx, 4\n";
+							src += "\tmov %eax, dword ptr [%ebp+" + offset + "]\n";
+							src += "\tadd %eax, %ebx\n";
+							src += "\tmov %edi, %eax\n"; 
+							
+						}
+						else {
+							src += "\tmov %" + reg + ", %" + toReg + "\n";
+							src += "\tsub %" + reg + ", " + node.getStartDim() + "\n";
+							src += "\timul %" + reg + ", 4\n";
+							src += "\tadd %" + reg + ", " + offset + "\n";
+							src += "\tadd %" + reg +", %" + scope + "\n";
+							//src += "\tmov %" + reg + ", dword ptr [%" + scope + (scope.compareTo("eax") == 0 ? "+" : "-") + (arrayRefNode.getOffset() * -1)  + "]\n";
+						}
+					}
+					else {
+						if (node.getParam()) {
+							int realOff = (node.getEndOffset() - node.getOffset()) * -1;
+							int offset = ((node.getParamOffset() - 8) * -1);
+							src += "\tmov %ebx, dword ptr [%" + scope + "+"  + offset + "]\n";
+							src += "\tadd %ebx, " + realOff + "\n";
+							src += "\tmov %" + reg + ", dword ptr [%ebx]\n";
+						}
+						else
+							src += "\tmov %" + reg + ", dword ptr [%" + scope + node.getOffset() + "]\n";
+					}
+					
+				}
+				//If idrefNode
+				if (param instanceof IdRefNode) {
+					IdRefNode n = (IdRefNode)param;
+					reg = getFreeRegister();
+					
+					if (!n.getScope()) {
+						src += "\tmov %eax, offset flat:.__main_ebp\n";
+						src += "\tmov %eax, dword ptr [%eax]\n";
+						if (isCall) {
+							src += "\tmov %" + reg + ", %eax\n";
+							if (n.getParam())
+								src += "\tadd %" + reg + ", " + ((n.getOffset() * -1) + 4) + "\n";
+							else
+								src += "\tsub %" + reg + ", " + (n.getOffset() * -1) + "\n";
+						}
+						else
+							src += "\tmov %" + reg + ", dword ptr [%eax" + n.getOffset() + "]\n";
+					} 
+					else {
+						if (isCall) {
+							src += "\tmov %" + reg + ", %ebp\n";
+							if (n.getParam())
+								src += "\tadd %" + reg + ", " + ((n.getOffset() * -1) + 4) + "\n";
+							else
+								src += "\tsub %" + reg + ", " + (n.getOffset() * -1) + "\n";
+						}
+						else {
+							int off = n.getOffset();
+							if (n.getParam()) 
+								off = (off * -1) + 4;
+							src += "\tmov %" + reg + ", dword ptr [%ebp" + (off > 0 ? "+" + off : off) + "]\n";
+							if (n.getParam())
+								src += "\tmov %" + reg + ", [%" + reg + "]\n"; 
+						}
+					}
+				}
+				else if (param instanceof IntNode || param instanceof FloatNode) {
+					reg = (String)param.accept(this);
+					src += "\tpush %" + reg + "\n";
+					src += "\tmov %" + reg + ", dword ptr [%ebp]\n";
+					constants++;
+				}
+				else {
+					reg = (String)param.accept(this);
+				}
+				
 				if (param.getParam())
 					src += "\tpush [%" + reg + "]\n"; 
 				else	
@@ -985,8 +1311,15 @@ public class CodeGeneratorVisitor implements Visitor {
 		isCall = false;
 		src += "\tcall " + name + "\n";
 		if (callNode.getChild(0) != null) 
-			src += "\tadd %esp, " + 4 * callNode.getChild(0).getChildren().size() + "\n";
-
+			src += "\tadd %esp, " + (4 * (callNode.getChild(0).getChildren().size() + constants)) + "\n";
+		
+		//Recover all saved registers
+		for (String regs : registers.keySet()) {
+			if (registers.get(regs)) {
+				src += "\tpop %" + regs + "\n";
+			}
+		}
+		
 		String reg = getFreeRegister();
 		src += "\tmov %" + reg + ", %eax\n";
 		return reg; 
@@ -1007,27 +1340,77 @@ public class CodeGeneratorVisitor implements Visitor {
 
 	@Override
 	public Object visit(IdDefNode idDefNode) {
-		int offset = idDefNode.getOffset() * -1;
+		int offset = idDefNode.getOffset();
 		String reg = "ebp";
 		if (!idDefNode.getScope()) {
 			src += "\tmov %eax, offset flat:.__main_ebp\n";
 			src += "\tmov %eax, dword ptr [%eax]\n";
 			reg = "eax";
 		} 
-		if (idDefNode.getType() == 1) {
+		
+		if (idDefNode.getRealType() == 1) {
 			src += "\tpush %edi\n"; 
-			src += "\tfld dword ptr [%esp]\n";
+			if (idDefNode.getType() == 0) 
+				src += "\tfild dword ptr [%esp]\n";
+			else
+				src += "\tfld dword ptr [%esp]\n";
+			
 			src += "\tadd %esp, 4\n";
-			src += "\tfstp dword ptr [%" + reg + "-" + offset + "]\n";
+			if (idDefNode.getParam()) {
+				offset = (offset * -1) + 4;
+				src += "\tmov %eax, dword ptr [%ebp+" + offset + "]\n";
+				src += "\tfstp dword ptr [%eax]\n";
+			}
+			else
+				src += "\tfstp dword ptr [%" + reg + (offset > 0 ? "+" + offset : offset) + "]\n";
 		}
-		else
-			src += "\tmov dword ptr [%" + reg + "-" + offset + "], %edi\n";
+		else if (idDefNode.getRealType() == 0) {
+			if (idDefNode.getType() == 1) {
+				 src += "\tpush %edi\n";
+	             src += "\tfld dword ptr [%esp]\n";
+	             src += "\tfisttp dword ptr [%esp]\n";
+	             src += "\tpop %edi\n";
+			}
+			
+			if (idDefNode.getParam()) {
+				offset = (offset * -1) + 4;
+				src += "\tmov %eax, dword ptr [%ebp+" + offset + "]\n";
+				src += "\tmov dword ptr [%eax], %edi\n";
+			}
+			else
+				src += "\tmov dword ptr [%" + reg + (offset > 0 ? "+" + offset : offset) + "], %edi\n";
+		}
+		
 		return null; 
 	}
 	
 	@Override
 	public Object visit(ArrayDefNode arrayDefNode) {
 		String reg = "ebp";
+		
+		//System.out.println(arrayDefNode.getRealType());
+		//System.out.println(arrayDefNode.getType());
+		
+		if (arrayDefNode.getRealType() == 1) {
+			src += "\tpush %edi\n"; 
+			if (arrayDefNode.getType() == 0) 
+				src += "\tfild dword ptr [%esp]\n";
+			else
+				src += "\tfld dword ptr [%esp]\n";
+			
+			src += "\tfstp dword ptr [%esp]\n";
+			src += "\tpop %edi\n";
+		}
+		else if (arrayDefNode.getRealType() == 0) {
+			if (arrayDefNode.getType() == 1) {
+				 src += "\tpush %edi\n";
+	             src += "\tfld dword ptr [%esp]\n";
+	             src += "\tfisttp dword ptr [%esp]\n";
+	             src += "\tpop %edi\n";
+			}
+		}
+		
+		
 		if (!arrayDefNode.getScope()) {
 			src += "\tmov %eax, offset flat:.__main_ebp\n";
 			src += "\tmov %eax, dword ptr [%eax]\n";
@@ -1035,17 +1418,46 @@ public class CodeGeneratorVisitor implements Visitor {
 		} 
 		
 		if (arrayDefNode.getChild(0).getClass().getSimpleName().compareTo("IdRefNode") == 0) {
+			String toReg = (String)arrayDefNode.getChild(0).accept(this);
 			int offset = arrayDefNode.getEndOffset();
-			src += "\tmov %ebx, %edi\n";
-			src += "\tsub %ebx, " + arrayDefNode.getStartDim() + "\n";
-			src += "\timul %ebx, 4\n";
-			src += "\tadd %ebx, " + offset + "\n";
-			src += "\tadd %ebx, %" + reg + "\n";
-			src += "\tmov dword ptr [%ebx], %edi\n"; 
+			if (arrayDefNode.getParam()) {
+				reg = "ebp";
+				offset = offset + 4;
+			}
+			freeRegister(toReg);
+			if (arrayDefNode.getParam()) {
+				offset = ((arrayDefNode.getParamOffset() - 8) * -1);
+				src += "\tmov %ebx, %" + toReg + "\n";
+				src += "\tsub %ebx, " + arrayDefNode.getStartDim() + "\n";
+				src += "\timul %ebx, 4\n";
+				src += "\tmov %eax, dword ptr [%ebp+" + offset + "]\n";
+				src += "\tadd %eax, %ebx\n";
+				src += "\tmov dword ptr [%eax], %edi\n"; 
+				
+			}
+			else {
+				src += "\tmov %ebx, %" + toReg + "\n";
+				src += "\tsub %ebx, " + arrayDefNode.getStartDim() + "\n";
+				src += "\timul %ebx, 4\n";
+				src += "\tadd %ebx, " + offset + "\n";
+				src += "\tadd %ebx, %" + reg + "\n";
+				src += "\tmov dword ptr [%ebx], %edi\n"; 
+			}
 		}
 		else {
 			int offset = arrayDefNode.getOffset() * -1;
-			src += "\tmov dword ptr [%" + reg + "-" + offset + "], %edi\n";
+			if (arrayDefNode.getParam()) {
+				reg = "ebp+";
+				//offset = offset + 4;
+				offset = ((arrayDefNode.getParamOffset() - 8) * -1);
+				int realOff = (arrayDefNode.getEndOffset() - arrayDefNode.getOffset()) * -1;
+				src += "\tmov %ebx, dword ptr [%" + reg + offset + "]\n";
+				src += "\tadd %ebx, " + realOff + "\n";
+				src += "\tmov dword ptr [%ebx], %edi\n";
+				//src += "\tmov dword ptr [%ebx" + (realOff == 0 ? "" : "+" + realOff) + "], %edi\n";
+			}
+			else
+				src += "\tmov dword ptr [%" + reg + "-" + offset + "], %edi\n";
 		}
 		return null; 
 	}

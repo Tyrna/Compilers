@@ -7,6 +7,7 @@ public class ArrayDefNode extends ASTNode {
 	protected int endOffset;
 	protected int start;
 	protected int end;
+	protected int paramOff;
 	
 	public ArrayDefNode() {
 		super();
@@ -36,6 +37,14 @@ public class ArrayDefNode extends ASTNode {
 	
 	public int getStartDim() {
 		return start;
+	}
+	
+	public void setParamOffset(int i) {
+		paramOff = i;
+	}
+	
+	public int getParamOffset() {
+		return paramOff;
 	}
 
 }
