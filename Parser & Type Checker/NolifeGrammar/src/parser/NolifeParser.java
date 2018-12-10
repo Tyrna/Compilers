@@ -11,13 +11,13 @@ public class NolifeParser implements NolifeParserConstants {
             NolifeParser parser;
             java.io.InputStream input;
 
-            /*if (args.length < 1) {
-	      	System.out.println("Usage: java -jar nlc.jar <input file>");
-	      	return;
-	    }*/
+            if (args.length < 1) {
+                System.out.println("Usage: java -jar nlc.jar <input file>");
+                return;
+            }
 
-            //String filename = new String(args[args.length - 1]);
-            String filename = new String("test.txt");
+            String filename = new String(args[args.length - 1]);
+            //String filename = new String("test.txt");
             try {
                 input = new java.io.FileInputStream(filename);
             } catch (java.io.FileNotFoundException e) {

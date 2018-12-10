@@ -1,5 +1,7 @@
 package visitor;
 
+import java.io.FileOutputStream;
+import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.Stack;
 
@@ -18,6 +20,7 @@ public class MemoryMapVisitor implements Visitor {
 	private int constOffset = 0;
 	private int tempNum = 0;
 	private boolean params = false;
+	private String src = "";
 	
 
 	public MemoryMapVisitor() {
@@ -248,6 +251,7 @@ public class MemoryMapVisitor implements Visitor {
 
 	@Override
 	public Object visit(ProgramNode programNode) {
+		src += "#*****GLOBAL SCOPE*****\n";
 		programNode.getLabel();
 		//Initialize global scope
 		symTable = new HashMap<String, ASTNode>();
@@ -260,7 +264,15 @@ public class MemoryMapVisitor implements Visitor {
 		//	System.out.printf("Key: %s, Value: %d\n", key, constTable.get(key));
 		
 		programNode.setTable(constTable);
-	return null; }
+		//Output
+		try (PrintStream out = new PrintStream(new FileOutputStream("MemoryMap.map"))) {
+		    out.print(src);
+		}
+		catch (java.io.FileNotFoundException e) {
+	        System.out.println("Error output file.");
+		}
+		return null; 
+	}
 
 	@Override
 	public Object visit(VarDeclsNode varDeclsNode) {
@@ -398,6 +410,7 @@ public class MemoryMapVisitor implements Visitor {
 	@Override
 	public Object visit(ProcNode procNode) {
 		//New scope
+		src += "\n#*****PROCEDURE " + procNode.getLabel() + "*****\n";
 		symTable = new HashMap<String, ASTNode>();
 		symTableStack.push(symTable);
 		offset = 0;
@@ -417,6 +430,7 @@ public class MemoryMapVisitor implements Visitor {
 	@Override
 	public Object visit(FuncNode funcNode) {
 		//New scope
+		src += "\n#*****FUNCTION " + funcNode.getLabel() + "*****\n";
 		symTable = new HashMap<String, ASTNode>();
 		symTableStack.push(symTable);
 		offset = 0;
@@ -468,6 +482,9 @@ public class MemoryMapVisitor implements Visitor {
 		System.out.printf("%s Declaration: %s, is on offset %d\n",
 				idDeclNode.getParam() ? "Parameter" : "Variable",
 				idDeclNode.getLabel(), idDeclNode.getOffset());
+		src += "# " + (idDeclNode.getParam() ? "Parameter Variable " : "Variable ") +
+				idDeclNode.getLabel() + ", Offset: " + 
+				(idDeclNode.getParam() ? "+" + (idDeclNode.getOffset() - 4) * -1  : idDeclNode.getOffset())  + "\n";
 		return null; 
 	}
 	
@@ -491,7 +508,14 @@ public class MemoryMapVisitor implements Visitor {
 		System.out.printf("%s Array Declaration: %s, is until offset %d\n\t\t\tFrom offset %d\n",
 				arrayDeclNode.getParam() ? "Parameter" : "Variable",
 				arrayDeclNode.getLabel(), arrayDeclNode.getOffset(), arrayDeclNode.getEndOffset());
-	return null; }
+		
+		src += "# " + (arrayDeclNode.getParam() ? "Parameter Array " : "Array ") +
+				arrayDeclNode.getLabel() + "[" + arrayDeclNode.getStartDim() + ".." + arrayDeclNode.getMaxDim() + "]" +
+				(arrayDeclNode.getParam() ? ", Offset: +" + ((arrayDeclNode.getParamOffset() -8) * -1)  :
+					", Until Offset: " + arrayDeclNode.getOffset() + "; From Offset: " + arrayDeclNode.getEndOffset())  + "\n";
+		
+		return null; 
+	}
 
 	@Override
 	public Object visit(IdDefNode idDefNode) {
